@@ -267,7 +267,7 @@
 
   /* ---------- Stat tiles ---------- */
   .tiles { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-top: 14px; }
-  @media (min-width: 720px) { .tiles { grid-template-columns: repeat(4, 1fr); } }
+  @media (min-width: 720px) { .tiles { grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); } }
   .tile {
     background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
     padding: 14px 16px; box-shadow: var(--shadow); position: relative; overflow: hidden;
@@ -608,12 +608,13 @@
   <section class="tab" id="tab-contact">
     <div class="card">
       <h2>Contact Center</h2>
-      <div class="sub">Registra los mensajes que llegaron al WhatsApp y las citas que se agendaron. Sin cuenta, directo al grano.</div>
+      <div class="sub">Registra los mensajes que llegaron al WhatsApp, las citas agendadas y las citas asistidas. Sin cuenta, directo al grano.</div>
 
       <div class="field-lbl">¿Qué vas a registrar?</div>
       <div class="seg" id="conTipo">
-        <button data-v="llegada" class="sel">📥 Mensaje que llegó</button>
-        <button data-v="agendada">📅 Cita agendada</button>
+        <button data-v="llegada" class="sel">📥 Llegó</button>
+        <button data-v="agendada">📅 Agendada</button>
+        <button data-v="asistida">✅ Asistida</button>
       </div>
 
       <div class="field-lbl">Fecha</div>
@@ -655,23 +656,25 @@
       <div class="tile" style="--tile-c: var(--s1)"><div class="t-lbl">Respondidos</div><div class="t-val" id="stTotal">0</div><div class="t-sub" id="stTotalSub"></div></div>
       <div class="tile" style="--tile-c: var(--s2)"><div class="t-lbl">Llegaron a Contact</div><div class="t-val" id="stCon">0</div><div class="t-sub" id="stConSub"></div></div>
       <div class="tile" style="--tile-c: var(--s3)"><div class="t-lbl">Agendados</div><div class="t-val" id="stAge">0</div><div class="t-sub" id="stAgeSub"></div></div>
-      <div class="tile" style="--tile-c: var(--s4)"><div class="t-lbl">Conversión total</div><div class="t-val" id="stConv">—</div><div class="t-sub">de respuesta a cita</div></div>
+      <div class="tile" style="--tile-c: var(--s4)"><div class="t-lbl">Asistieron</div><div class="t-val" id="stAsi">0</div><div class="t-sub" id="stAsiSub"></div></div>
+      <div class="tile" style="--tile-c: var(--accent)"><div class="t-lbl">Conversión total</div><div class="t-val" id="stConv">—</div><div class="t-sub">de respuesta a asistencia</div></div>
     </div>
 
     <div class="card">
       <h2>Embudo del periodo</h2>
-      <div class="sub">Respondidos → Llegaron a Contact → Agendados</div>
+      <div class="sub">Respondidos → Llegaron a Contact → Agendados → Asistieron</div>
       <div class="funnel" id="funnel"></div>
     </div>
 
     <div class="card">
       <h2>Evolución</h2>
-      <div class="sub" id="lineSub">Respondidos vs. llegados vs. agendados</div>
+      <div class="sub" id="lineSub">Respondidos vs. llegados vs. agendados vs. asistidos</div>
       <div class="linewrap" id="lineChart"></div>
       <div class="legend">
         <span><span class="dot" style="background:var(--s1)"></span> Respondidos (Andrea)</span>
         <span><span class="dot" style="background:var(--s2)"></span> Llegaron a Contact</span>
         <span><span class="dot" style="background:var(--s3)"></span> Agendados</span>
+        <span><span class="dot" style="background:var(--s4)"></span> Asistieron</span>
       </div>
     </div>
 
@@ -823,6 +826,7 @@ function addEvent(who, tipo, cuenta, red, cantidad, fechaKey) {
   renderAll();
   const verbo = tipo === "llegada" ? "llegada(s) a Contact"
               : tipo === "agendada" ? "cita(s) agendada(s)"
+              : tipo === "asistida" ? "cita(s) asistida(s)"
               : tipo === "mensaje" ? "mensaje(s)" : "comentario(s)";
   const donde = cuenta ? " · " + cuentaNombre(cuenta) : "";
   const dia = (fechaKey && fechaKey !== todayKey()) ? " · " + fechaKey : "";
@@ -1202,12 +1206,13 @@ applyTheme();
 
 /* ================= Agregaciones ================= */
 function agg(events) {
-  const out = { total: 0, msg: 0, com: 0, con: 0, age: 0, porCuenta: {}, porRed: {} };
+  const out = { total: 0, msg: 0, com: 0, con: 0, age: 0, asi: 0, porCuenta: {}, porRed: {} };
   CUENTAS.forEach(c => out.porCuenta[c.id] = { msg: 0, com: 0 });
   REDES.forEach(r => out.porRed[r.id] = { resp: 0 });
   for (const ev of events) {
     if (ev.who === "contact") {
       if (ev.tipo === "agendada") out.age += ev.cantidad;
+      else if (ev.tipo === "asistida") out.asi += ev.cantidad;
       else out.con += ev.cantidad;
     } else {
       const pc = out.porCuenta[ev.cuenta], pr = out.porRed[ev.red];
@@ -1236,9 +1241,11 @@ function renderAll() {
   /* --- comparación en Contact (hoy, global) --- */
   const tLleg = pct(hoy.con, hoy.total);
   const tAge = pct(hoy.age, hoy.con);
+  const tAsi = pct(hoy.asi, hoy.age);
   document.getElementById("conCompare").innerHTML = `
     <div><div class="cmp-big">${hoy.con} / ${hoy.total}</div><div class="cmp-lbl">llegaron vs. respondidos hoy${tLleg !== null ? " (" + tLleg + "%)" : ""}</div></div>
     <div><div class="cmp-big">${hoy.age}</div><div class="cmp-lbl">agendados hoy${tAge !== null ? " (" + tAge + "% de los que llegaron)" : ""}</div></div>
+    <div><div class="cmp-big">${hoy.asi}</div><div class="cmp-lbl">asistieron hoy${tAsi !== null ? " (" + tAsi + "% de los agendados)" : ""}</div></div>
     <div style="flex:1;min-width:160px"><div class="cmp-lbl">Hoy Andrea respondió <b>${hoy.msg}</b> mensaje(s) y <b>${hoy.com}</b> comentario(s).</div></div>`;
 
   /* --- gráficas (periodo) --- */
@@ -1253,7 +1260,10 @@ function renderAll() {
   document.getElementById("stConSub").innerHTML = tasaLleg === null ? "al WhatsApp del equipo" : `tasa de llegada: <b class="good">${tasaLleg}%</b>`;
   const tasaAge = pct(a.age, a.con);
   document.getElementById("stAgeSub").innerHTML = tasaAge === null ? "citas agendadas" : `<b class="good">${tasaAge}%</b> de los que llegaron`;
-  const conv = pct(a.age, a.total);
+  countUp(document.getElementById("stAsi"), a.asi);
+  const tasaAsi = pct(a.asi, a.age);
+  document.getElementById("stAsiSub").innerHTML = tasaAsi === null ? "citas asistidas" : `<b class="good">${tasaAsi}%</b> de los agendados`;
+  const conv = pct(a.asi, a.total);
   document.getElementById("stConv").textContent = conv === null ? "—" : conv + "%";
 
   renderFunnel(a);
@@ -1279,7 +1289,7 @@ function renderAll() {
 function renderFunnel(a) {
   const box = document.getElementById("funnel");
   box.innerHTML = "";
-  if (a.total === 0 && a.con === 0 && a.age === 0) {
+  if (a.total === 0 && a.con === 0 && a.age === 0 && a.asi === 0) {
     box.innerHTML = '<div class="empty">Sin registros en este periodo</div>';
     return;
   }
@@ -1287,6 +1297,7 @@ function renderFunnel(a) {
     { label: "Respondidos", value: a.total, color: "var(--s1)" },
     { label: "Llegaron", value: a.con, color: "var(--s2)", rate: pct(a.con, a.total), rateLbl: "llegaron a Contact" },
     { label: "Agendados", value: a.age, color: "var(--s3)", rate: pct(a.age, a.con), rateLbl: "se agendaron" },
+    { label: "Asistieron", value: a.asi, color: "var(--s4)", rate: pct(a.asi, a.age), rateLbl: "asistieron a su cita" },
   ];
   const max = Math.max(1, ...steps.map(s => s.value));
   steps.forEach((s, i) => {
@@ -1352,15 +1363,19 @@ function renderLine(evs) {
     }
     document.getElementById("lineSub").textContent = "Por día · " + (sel.range === "todo" ? "últimos " + buckets.length + " días" : "periodo seleccionado");
   }
-  const resp = buckets.map(() => 0), lleg = buckets.map(() => 0), agen = buckets.map(() => 0);
+  const resp = buckets.map(() => 0), lleg = buckets.map(() => 0), agen = buckets.map(() => 0), asis = buckets.map(() => 0);
   for (const ev of evs) {
     const key = hourly ? new Date(ev.ts).getHours() : dayKey(ev.ts);
     const i = buckets.indexOf(key);
     if (i < 0) continue;
-    if (ev.who === "contact") { if (ev.tipo === "agendada") agen[i] += ev.cantidad; else lleg[i] += ev.cantidad; }
+    if (ev.who === "contact") {
+      if (ev.tipo === "agendada") agen[i] += ev.cantidad;
+      else if (ev.tipo === "asistida") asis[i] += ev.cantidad;
+      else lleg[i] += ev.cantidad;
+    }
     else resp[i] += ev.cantidad;
   }
-  if (resp.every(v => v === 0) && lleg.every(v => v === 0) && agen.every(v => v === 0)) {
+  if (resp.every(v => v === 0) && lleg.every(v => v === 0) && agen.every(v => v === 0) && asis.every(v => v === 0)) {
     box.innerHTML = '<div class="empty">Sin registros en este periodo — cuando registren, aquí verás las curvas 📈</div>';
     return;
   }
@@ -1368,14 +1383,15 @@ function renderLine(evs) {
   const W = Math.max(320, box.clientWidth || 640), H = 240;
   const padL = 34, padR = 14, padT = 14, padB = 26;
   const iw = W - padL - padR, ih = H - padT - padB;
-  const maxV = Math.max(1, ...resp, ...lleg, ...agen);
+  const maxV = Math.max(1, ...resp, ...lleg, ...agen, ...asis);
   const niceMax = niceCeil(maxV);
   const n = buckets.length;
   const x = i => padL + (n === 1 ? iw / 2 : i / (n - 1) * iw);
   const y = v => padT + ih - v / niceMax * ih;
 
   const css = getComputedStyle(document.documentElement);
-  const c1 = css.getPropertyValue("--s1").trim(), c2 = css.getPropertyValue("--s2").trim(), c3 = css.getPropertyValue("--s3").trim();
+  const c1 = css.getPropertyValue("--s1").trim(), c2 = css.getPropertyValue("--s2").trim(),
+        c3 = css.getPropertyValue("--s3").trim(), c4 = css.getPropertyValue("--s4").trim();
   const gridC = css.getPropertyValue("--grid").trim(), mutedC = css.getPropertyValue("--muted").trim();
   const baseC = css.getPropertyValue("--baseline").trim(), surfC = css.getPropertyValue("--surface").trim();
 
@@ -1395,7 +1411,7 @@ function renderLine(evs) {
 
   /* puntos finales con anillo pulsante ("bolitas" vivas) */
   const last = n - 1;
-  const endDots = [[resp, c1], [lleg, c2], [agen, c3]].map(([arr, c]) => `
+  const endDots = [[resp, c1], [lleg, c2], [agen, c3], [asis, c4]].map(([arr, c]) => `
     <circle class="ring" cx="${x(last)}" cy="${y(arr[last])}" r="5" fill="${c}"/>
     <circle cx="${x(last)}" cy="${y(arr[last])}" r="4" fill="${c}" stroke="${surfC}" stroke-width="1.5"/>`).join("");
 
@@ -1411,11 +1427,13 @@ function renderLine(evs) {
     <path d="${path(resp)}" fill="none" stroke="${c1}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ln"/>
     <path d="${path(lleg)}" fill="none" stroke="${c2}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ln"/>
     <path d="${path(agen)}" fill="none" stroke="${c3}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ln"/>
+    <path d="${path(asis)}" fill="none" stroke="${c4}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ln"/>
     ${endDots}
     <line id="xh" x1="0" y1="${padT}" x2="0" y2="${padT + ih}" stroke="${baseC}" stroke-width="1" stroke-dasharray="3 3" opacity="0"/>
     <circle id="p1" r="4.5" fill="${c1}" stroke="${surfC}" stroke-width="2" opacity="0"/>
     <circle id="p2" r="4.5" fill="${c2}" stroke="${surfC}" stroke-width="2" opacity="0"/>
     <circle id="p3" r="4.5" fill="${c3}" stroke="${surfC}" stroke-width="2" opacity="0"/>
+    <circle id="p4" r="4.5" fill="${c4}" stroke="${surfC}" stroke-width="2" opacity="0"/>
     ${xLabels}
     <rect x="${padL}" y="${padT}" width="${iw}" height="${ih}" fill="transparent" id="hitbox"/>
   </svg>`;
@@ -1434,7 +1452,8 @@ function renderLine(evs) {
   const svg = box.querySelector("svg");
   const hit = box.querySelector("#hitbox");
   const xh = box.querySelector("#xh");
-  const p1 = box.querySelector("#p1"), p2 = box.querySelector("#p2"), p3 = box.querySelector("#p3");
+  const p1 = box.querySelector("#p1"), p2 = box.querySelector("#p2"),
+        p3 = box.querySelector("#p3"), p4 = box.querySelector("#p4");
   function onMove(e) {
     const r = svg.getBoundingClientRect();
     const mx = (e.clientX - r.left) / r.width * W;
@@ -1445,15 +1464,18 @@ function renderLine(evs) {
     p1.setAttribute("cx", xx); p1.setAttribute("cy", y(resp[best])); p1.setAttribute("opacity", "1");
     p2.setAttribute("cx", xx); p2.setAttribute("cy", y(lleg[best])); p2.setAttribute("opacity", "1");
     p3.setAttribute("cx", xx); p3.setAttribute("cy", y(agen[best])); p3.setAttribute("opacity", "1");
+    p4.setAttribute("cx", xx); p4.setAttribute("cy", y(asis[best])); p4.setAttribute("opacity", "1");
     showTip(`<div class="tp-t">${labels[best]}</div>
       <div class="tp-r"><span class="dot" style="background:${c1}"></span>Respondidos<b>${resp[best]}</b></div>
       <div class="tp-r"><span class="dot" style="background:${c2}"></span>Llegaron<b>${lleg[best]}</b></div>
-      <div class="tp-r"><span class="dot" style="background:${c3}"></span>Agendados<b>${agen[best]}</b></div>`,
+      <div class="tp-r"><span class="dot" style="background:${c3}"></span>Agendados<b>${agen[best]}</b></div>
+      <div class="tp-r"><span class="dot" style="background:${c4}"></span>Asistieron<b>${asis[best]}</b></div>`,
       e.clientX, e.clientY);
   }
   function onLeave() {
     xh.setAttribute("opacity", "0");
-    p1.setAttribute("opacity", "0"); p2.setAttribute("opacity", "0"); p3.setAttribute("opacity", "0");
+    p1.setAttribute("opacity", "0"); p2.setAttribute("opacity", "0");
+    p3.setAttribute("opacity", "0"); p4.setAttribute("opacity", "0");
     hideTip();
   }
   hit.addEventListener("mousemove", onMove);
@@ -1502,6 +1524,9 @@ function renderHist() {
       if (ev.tipo === "agendada") {
         badge = '<span class="h-badge" style="background:var(--s3)">Agenda</span>';
         desc = `<b>+${ev.cantidad}</b> cita(s) agendada(s)`;
+      } else if (ev.tipo === "asistida") {
+        badge = '<span class="h-badge" style="background:var(--s4)">Asistió</span>';
+        desc = `<b>+${ev.cantidad}</b> cita(s) asistida(s)`;
       } else {
         badge = '<span class="h-badge" style="background:var(--s2)">Contact</span>';
         desc = `<b>+${ev.cantidad}</b> mensaje(s) que llegaron`;
