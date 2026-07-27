@@ -584,6 +584,7 @@
       <div class="split">
         <span>💬 Mensajes: <b id="heroMsg">0</b></span>
         <span>💭 Comentarios: <b id="heroCom">0</b></span>
+        <span>⭐ Reseñas: <b id="heroRes">0</b></span>
       </div>
       <div class="dots"><span></span><span></span><span></span><span></span></div>
     </div>
@@ -602,6 +603,7 @@
       <div class="seg" id="regTipo">
         <button data-v="mensaje" class="sel">💬 Mensaje</button>
         <button data-v="comentario">💭 Comentario</button>
+        <button data-v="resena" style="display:none">⭐ Reseña</button>
       </div>
 
       <div class="field-lbl">Fecha</div>
@@ -890,6 +892,7 @@ function addEvent(who, tipo, cuenta, red, cantidad, fechaKey) {
               : tipo === "agendada" ? "cita(s) agendada(s)"
               : tipo === "asistida" ? "cita(s) asistida(s)"
               : esNeg(tipo) ? "queja(s) por " + (NEG_LBL[tipo.slice(4)] || "otro motivo")
+              : tipo === "resena" ? "reseña(s) de Google"
               : tipo === "mensaje" ? "mensaje(s)" : "comentario(s)";
   const donde = cuenta ? " · " + cuentaNombre(cuenta) : "";
   const dia = (fechaKey && fechaKey !== todayKey()) ? " · " + fechaKey : "";
@@ -1165,14 +1168,23 @@ function syncOptions() {
   for (const [cid, val] of Object.entries(map)) {
     document.querySelectorAll("#" + cid + " .opt").forEach(b => b.classList.toggle("sel", b.dataset.id === val));
   }
-  document.querySelectorAll("#regTipo button").forEach(b => b.classList.toggle("sel", b.dataset.v === sel.regTipo));
+  const isGoogle = sel.regRed === "google";
+  document.querySelectorAll("#regTipo button").forEach(b => {
+    b.style.display = (b.dataset.v === "resena") === isGoogle ? "" : "none";
+    b.classList.toggle("sel", b.dataset.v === sel.regTipo);
+  });
   document.querySelectorAll("#conTipo button").forEach(b => b.classList.toggle("sel", b.dataset.v === sel.conTipo));
   document.querySelectorAll("#filters button").forEach(b => b.classList.toggle("sel", b.dataset.r === sel.range));
   updateNegCtx();
 }
 
 buildOptions("regCuentas", CUENTAS, cuentaColor, v => sel.regCuenta = v, false);
-buildOptions("regRedes",   REDES,   redColor,    v => sel.regRed = v,    true);
+buildOptions("regRedes",   REDES,   redColor,    v => {
+  sel.regRed = v;
+  /* en Google solo se responden reseñas */
+  if (v === "google") sel.regTipo = "resena";
+  else if (sel.regTipo === "resena") sel.regTipo = "mensaje";
+}, true);
 
 document.querySelectorAll("#regTipo button").forEach(b => {
   b.onclick = () => { sel.regTipo = b.dataset.v; saveSel(); syncOptions(); };
@@ -1271,9 +1283,9 @@ applyTheme();
 
 /* ================= Agregaciones ================= */
 function agg(events) {
-  const out = { total: 0, msg: 0, com: 0, con: 0, age: 0, asi: 0, neg: 0,
+  const out = { total: 0, msg: 0, com: 0, res: 0, con: 0, age: 0, asi: 0, neg: 0,
     negM: { mala: 0, costos: 0, otro: 0 }, porCuenta: {}, porRed: {}, negPorCuenta: {} };
-  CUENTAS.forEach(c => { out.porCuenta[c.id] = { msg: 0, com: 0 }; out.negPorCuenta[c.id] = 0; });
+  CUENTAS.forEach(c => { out.porCuenta[c.id] = { msg: 0, com: 0, res: 0 }; out.negPorCuenta[c.id] = 0; });
   REDES.forEach(r => out.porRed[r.id] = { resp: 0 });
   for (const ev of events) {
     if (ev.who === "contact") {
@@ -1292,6 +1304,7 @@ function agg(events) {
     const pc = out.porCuenta[ev.cuenta], pr = out.porRed[ev.red];
     out.total += ev.cantidad;
     if (ev.tipo === "mensaje") { out.msg += ev.cantidad; if (pc) pc.msg += ev.cantidad; }
+    else if (ev.tipo === "resena") { out.res += ev.cantidad; if (pc) pc.res += ev.cantidad; }
     else { out.com += ev.cantidad; if (pc) pc.com += ev.cantidad; }
     if (pr) pr.resp += ev.cantidad;
   }
@@ -1310,6 +1323,7 @@ function renderAll() {
   countUp(document.getElementById("heroCount"), hoy.total);
   document.getElementById("heroMsg").textContent = hoy.msg;
   document.getElementById("heroCom").textContent = hoy.com;
+  document.getElementById("heroRes").textContent = hoy.res;
 
   /* --- comparación en Contact (hoy, global) --- */
   const tLleg = pct(hoy.con, hoy.total);
@@ -1328,7 +1342,7 @@ function renderAll() {
   countUp(document.getElementById("stCon"), a.con);
   countUp(document.getElementById("stAge"), a.age);
   const lblRango = { hoy: "hoy", "7d": "últimos 7 días", "30d": "últimos 30 días", todo: "todo el tiempo" }[sel.range];
-  document.getElementById("stTotalSub").textContent = a.msg + " mensajes · " + a.com + " comentarios · " + lblRango;
+  document.getElementById("stTotalSub").textContent = a.msg + " msj · " + a.com + " com · " + a.res + " reseñas · " + lblRango;
   const tasaLleg = pct(a.con, a.total);
   document.getElementById("stConSub").innerHTML = tasaLleg === null ? "al WhatsApp del equipo" : `tasa de llegada: <b class="good">${tasaLleg}%</b>`;
   const tasaAge = pct(a.age, a.con);
@@ -1342,11 +1356,13 @@ function renderAll() {
   renderFunnel(a);
 
   renderBars("barsCuenta",
-    CUENTAS.map(c => ({ label: c.nombre, color: cuentaColor(c.id), value: a.porCuenta[c.id].msg + a.porCuenta[c.id].com,
+    CUENTAS.map(c => ({ label: c.nombre, color: cuentaColor(c.id),
+      value: a.porCuenta[c.id].msg + a.porCuenta[c.id].com + a.porCuenta[c.id].res,
       extra: a.porCuenta[c.id] })),
     (r) => `<div class="tp-t">${r.label}</div>
       <div class="tp-r"><span class="dot" style="background:${r.color}"></span>Mensajes<b>${r.extra.msg}</b></div>
-      <div class="tp-r"><span class="dot" style="background:${r.color}"></span>Comentarios<b>${r.extra.com}</b></div>`);
+      <div class="tp-r"><span class="dot" style="background:${r.color}"></span>Comentarios<b>${r.extra.com}</b></div>
+      <div class="tp-r"><span class="dot" style="background:${r.color}"></span>Reseñas<b>${r.extra.res}</b></div>`);
 
   renderBars("barsRed",
     REDES.map(r => ({ label: r.nombre, color: redColor(r.id), value: a.porRed[r.id].resp, extra: a.porRed[r.id] })),
@@ -1579,21 +1595,21 @@ function niceCeil(v) {
 function renderTable(a) {
   const t = document.getElementById("tblDetalle");
   let rows = "";
-  let tm = 0, tc = 0, tt = 0;
+  let tm = 0, tc = 0, tr = 0, tt = 0;
   const gran = a.total;
   CUENTAS.forEach(c => {
     const d = a.porCuenta[c.id];
-    const tot = d.msg + d.com;
+    const tot = d.msg + d.com + d.res;
     const part = gran > 0 ? Math.round(tot / gran * 100) + "%" : "—";
-    tm += d.msg; tc += d.com; tt += tot;
+    tm += d.msg; tc += d.com; tr += d.res; tt += tot;
     rows += `<tr><td><span class="dot" style="background:${cuentaColor(c.id)}"></span>${c.nombre}</td>
-      <td class="num">${d.msg}</td><td class="num">${d.com}</td><td class="num">${tot}</td>
+      <td class="num">${d.msg}</td><td class="num">${d.com}</td><td class="num">${d.res}</td><td class="num">${tot}</td>
       <td class="num">${part}</td></tr>`;
   });
   t.innerHTML = `<thead><tr><th>Cuenta</th><th class="num">Mensajes</th><th class="num">Comentarios</th>
-    <th class="num">Total</th><th class="num">% del total</th></tr></thead>
+    <th class="num">Reseñas</th><th class="num">Total</th><th class="num">% del total</th></tr></thead>
     <tbody>${rows}<tr class="total"><td>Total</td><td class="num">${tm}</td><td class="num">${tc}</td>
-    <td class="num">${tt}</td><td class="num">${tt > 0 ? "100%" : "—"}</td></tr></tbody>`;
+    <td class="num">${tr}</td><td class="num">${tt}</td><td class="num">${tt > 0 ? "100%" : "—"}</td></tr></tbody>`;
 }
 
 /* --- historial --- */
@@ -1624,7 +1640,8 @@ function renderHist() {
       desc = `<b>+${ev.cantidad}</b> negativo(s): ${NEG_LBL[ev.tipo.slice(4)] || "otro"} · ${cuentaNombre(ev.cuenta)} · ${redNombre(ev.red)}`;
     } else {
       badge = '<span class="h-badge" style="background:var(--s1)">Andrea</span>';
-      desc = `<b>+${ev.cantidad}</b> ${ev.tipo === "mensaje" ? "mensaje(s)" : "comentario(s)"} · ${cuentaNombre(ev.cuenta)} · ${redNombre(ev.red)}`;
+      const tl = ev.tipo === "mensaje" ? "mensaje(s)" : ev.tipo === "resena" ? "reseña(s)" : "comentario(s)";
+      desc = `<b>+${ev.cantidad}</b> ${tl} · ${cuentaNombre(ev.cuenta)} · ${redNombre(ev.red)}`;
     }
     item.innerHTML = `${badge}<div class="h-main">${desc}</div>
       <span class="h-time">${FMT_HIST.format(ev.ts)}</span>
@@ -1650,7 +1667,7 @@ document.getElementById("expCsv").onclick = () => {
       ev.who === "contact" ? "Contact" : "Andrea",
       '"' + (ev.cuenta ? cuentaNombre(ev.cuenta) : "") + '"',
       ev.red ? redNombre(ev.red) : "",
-      esNeg(ev.tipo) ? '"negativo: ' + (NEG_LBL[ev.tipo.slice(4)] || "otro") + '"' : ev.tipo,
+      esNeg(ev.tipo) ? '"negativo: ' + (NEG_LBL[ev.tipo.slice(4)] || "otro") + '"' : (ev.tipo === "resena" ? "reseña" : ev.tipo),
       ev.cantidad].join(",") + "\n";
   }
   download("responding_" + todayKey() + ".csv", csv, "text/csv;charset=utf-8");
