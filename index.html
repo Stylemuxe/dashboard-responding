@@ -78,10 +78,11 @@
 
   /* ---------- Fondo animado (esferas flotantes) ---------- */
   .blobs { position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
-  .blob { position: absolute; border-radius: 50%; filter: blur(80px); opacity: .14; animation: drift 20s ease-in-out infinite alternate; }
+  .blob { position: absolute; border-radius: 50%; filter: blur(80px); opacity: .17; animation: drift 20s ease-in-out infinite alternate; }
   .blob.b1 { width: 440px; height: 440px; background: var(--s1); top: -140px; left: -100px; }
   .blob.b2 { width: 380px; height: 380px; background: var(--s3); top: 32%; right: -140px; animation-duration: 26s; animation-delay: -7s; }
   .blob.b3 { width: 320px; height: 320px; background: var(--s2); bottom: -120px; left: 28%; animation-duration: 32s; animation-delay: -14s; }
+  .blob.b4 { width: 280px; height: 280px; background: var(--s4); top: 6%; left: 52%; animation-duration: 24s; animation-delay: -9s; }
   @keyframes drift {
     from { transform: translate(0, 0) scale(1); }
     to   { transform: translate(70px, 50px) scale(1.18); }
@@ -127,7 +128,10 @@
 
   /* ---------- Tabs ---------- */
   nav.tabs {
-    display: flex; gap: 6px; background: var(--surface); border: 1px solid var(--border);
+    display: flex; gap: 6px;
+    background: color-mix(in srgb, var(--surface) 82%, transparent);
+    backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--border);
     border-radius: 14px; padding: 5px; box-shadow: var(--shadow);
     position: sticky; top: 8px; z-index: 50; overflow-x: auto;
     max-width: 1100px; margin: 0 auto;
@@ -137,7 +141,11 @@
     background: transparent; color: var(--text-2); font-size: 13.5px; font-weight: 600;
     transition: all .2s ease; white-space: nowrap;
   }
-  nav.tabs button.active { background: var(--accent); color: #fff; box-shadow: var(--shadow); }
+  nav.tabs button.active {
+    background: linear-gradient(120deg, var(--s1), color-mix(in srgb, var(--s1) 45%, var(--s3)));
+    background-size: 180% 180%; animation: gradShift 5s ease infinite;
+    color: #fff; box-shadow: var(--shadow);
+  }
   nav.tabs button:not(.active):hover { color: var(--text-1); background: color-mix(in srgb, var(--accent) 8%, transparent); }
 
   section.tab { display: none; animation: fadeUp .35s ease; }
@@ -145,8 +153,11 @@
   @keyframes fadeUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 
   .card {
-    background: var(--surface); border: 1px solid var(--border); border-radius: 16px;
+    background: color-mix(in srgb, var(--surface) 84%, transparent);
+    backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--border); border-radius: 16px;
     padding: 18px; margin-top: 14px; box-shadow: var(--shadow);
+    position: relative; overflow: hidden;
   }
   .card h2 { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
   .card .sub { font-size: 12.5px; color: var(--text-2); margin-bottom: 12px; }
@@ -157,7 +168,7 @@
     background: linear-gradient(160deg, color-mix(in srgb, var(--s1) 10%, var(--surface)), var(--surface) 70%);
   }
   .hero .big {
-    font-size: 56px; font-weight: 800; letter-spacing: -1.5px; line-height: 1;
+    font-size: 46px; font-weight: 800; letter-spacing: -1.5px; line-height: 1;
     transition: transform .15s ease;
   }
   .hero .big.bump { animation: bump .4s ease; }
@@ -225,10 +236,12 @@
   .qty-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: stretch; }
   .qty-btn {
     flex: 1; min-width: 64px; padding: 16px 8px; font-size: 18px; font-weight: 800;
-    border: none; border-radius: 12px; color: #fff; background: var(--accent);
-    transition: transform .12s ease, filter .15s; position: relative; overflow: hidden;
+    border: none; border-radius: 12px; color: #fff;
+    background: linear-gradient(135deg, var(--s1), color-mix(in srgb, var(--s1) 45%, var(--s3)));
+    box-shadow: 0 4px 14px color-mix(in srgb, var(--s1) 30%, transparent);
+    transition: transform .15s ease, box-shadow .2s ease; position: relative; overflow: hidden;
   }
-  .qty-btn:hover { filter: brightness(1.08); }
+  .qty-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 22px color-mix(in srgb, var(--s1) 42%, transparent); }
   .qty-btn:active { transform: scale(0.94); }
   .qty-btn.pulse::before {
     content: ""; position: absolute; inset: 0; background: rgba(255,255,255,0.35);
@@ -275,7 +288,10 @@
     background: var(--surface); color: var(--text-2); font-size: 13px; font-weight: 600;
     transition: all .2s;
   }
-  .filters button.sel { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .filters button.sel {
+    background: linear-gradient(120deg, var(--s1), color-mix(in srgb, var(--s1) 45%, var(--s3)));
+    border-color: transparent; color: #fff;
+  }
 
   /* ---------- HTML bar chart ---------- */
   .bars { display: flex; flex-direction: column; gap: 10px; margin-top: 6px; }
@@ -332,7 +348,9 @@
   /* ---------- Contact compare ---------- */
   .cmp {
     display: flex; align-items: center; gap: 18px; padding: 14px; border-radius: 12px;
-    background: color-mix(in srgb, var(--s2) 8%, var(--surface)); border: 1px solid var(--border);
+    background: linear-gradient(120deg, color-mix(in srgb, var(--s2) 11%, var(--surface)), color-mix(in srgb, var(--s3) 11%, var(--surface)));
+    background-size: 200% 200%; animation: gradShift 9s ease infinite;
+    border: 1px solid var(--border);
     margin-top: 16px; flex-wrap: wrap; font-size: 13.5px;
   }
   .cmp .cmp-big { font-size: 26px; font-weight: 800; letter-spacing: -0.5px; }
@@ -385,7 +403,7 @@
   /* ---------- Toast ---------- */
   #toast {
     position: fixed; left: 50%; bottom: 26px; transform: translate(-50%, 90px);
-    background: var(--text-1); color: var(--page); padding: 12px 22px; border-radius: 999px;
+    background: linear-gradient(120deg, var(--s1), var(--s3)); color: #fff; padding: 12px 22px; border-radius: 999px;
     font-size: 14px; font-weight: 700; box-shadow: 0 8px 30px rgba(0,0,0,0.25);
     transition: transform .35s cubic-bezier(.2,.9,.3,1.2); z-index: 500; pointer-events: none;
     white-space: nowrap; max-width: 92vw; overflow: hidden; text-overflow: ellipsis;
@@ -437,20 +455,77 @@
   }
   .tile .t-val { transform-origin: left center; }
 
-  .hero .big { text-shadow: 0 4px 28px color-mix(in srgb, var(--s1) 28%, transparent); }
   .opt:active { transform: scale(.96); }
   nav.tabs button:active { transform: scale(.95); }
   .chip:hover { transform: translateY(-1px); }
   .card:hover { border-color: color-mix(in srgb, var(--accent) 22%, var(--border)); }
 
+  /* ---------- Diseño perrón: anillo, degradados vivos, luz ---------- */
+  .hero .ringwrap { width: 152px; height: 152px; margin: 0 auto 6px; position: relative; display: grid; place-items: center; }
+  .hero .ringwrap::before {
+    content: ""; position: absolute; inset: 0; border-radius: 50%;
+    background: conic-gradient(from 0deg, var(--s1), var(--s3), var(--s4), var(--s2), var(--s1));
+    animation: spin 7s linear infinite;
+    -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 5px), #000 calc(100% - 4px));
+            mask: radial-gradient(farthest-side, transparent calc(100% - 5px), #000 calc(100% - 4px));
+  }
+  .hero .ringwrap::after {
+    content: ""; position: absolute; inset: 10px; border-radius: 50%;
+    background: radial-gradient(circle, color-mix(in srgb, var(--s1) 14%, transparent), transparent 72%);
+    animation: breathe 3.5s ease-in-out infinite;
+  }
+  .hero .ringwrap .big { position: relative; z-index: 1; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes breathe { 50% { transform: scale(1.12); opacity: .7; } }
+
+  @supports ((-webkit-background-clip: text) or (background-clip: text)) {
+    .brand h1, .hero .big {
+      background: linear-gradient(100deg, var(--text-1) 25%, var(--accent) 50%, var(--text-1) 75%);
+      background-size: 240% 100%;
+      -webkit-background-clip: text; background-clip: text; color: transparent;
+      animation: textShift 6s linear infinite;
+    }
+  }
+  @keyframes textShift { from { background-position: 240% 0; } to { background-position: -240% 0; } }
+
+  .brand .logo { animation: gradShift 6s ease infinite, bob 3.6s ease-in-out infinite; }
+  @keyframes bob { 50% { transform: translateY(-4px) rotate(-4deg); } }
+
+  .card::after {
+    content: ""; position: absolute; top: 0; left: 0; right: 0; height: 2px; pointer-events: none;
+    background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--accent) 60%, transparent), transparent);
+    background-size: 240% 100%; animation: textShift 7s linear infinite; opacity: .85;
+  }
+  .card h2 { position: relative; display: inline-block; }
+  .card h2::after {
+    content: ""; position: absolute; left: 0; bottom: -3px; height: 2px; width: 100%; border-radius: 2px;
+    background: linear-gradient(90deg, var(--accent), transparent);
+    transform: scaleX(0); transform-origin: left;
+    animation: growline .7s .25s cubic-bezier(.2,.7,.3,1) forwards;
+  }
+  @keyframes growline { to { transform: scaleX(1); } }
+
+  .hist-item:nth-child(-n+8) { animation: fadeUp .35s ease both; }
+  .hist-item:nth-child(2) { animation-delay: .04s; }
+  .hist-item:nth-child(3) { animation-delay: .08s; }
+  .hist-item:nth-child(4) { animation-delay: .12s; }
+  .hist-item:nth-child(5) { animation-delay: .16s; }
+  .hist-item:nth-child(6) { animation-delay: .2s; }
+  .hist-item:nth-child(7) { animation-delay: .24s; }
+  .hist-item:nth-child(8) { animation-delay: .28s; }
+
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--accent) 35%, transparent); border-radius: 6px; }
+  ::-webkit-scrollbar-thumb:hover { background: color-mix(in srgb, var(--accent) 55%, transparent); }
+
   @media (prefers-reduced-motion: reduce) {
-    .blob, .spark, .hero .dots span, .bar-fill::after, .ring, .brand .logo { animation: none !important; }
-    section.tab.visible .card, .tiles .tile { animation: none; }
+    *, *::before, *::after { animation-duration: .001s !important; animation-iteration-count: 1 !important; }
   }
 </style>
 </head>
 <body>
-<div class="blobs"><div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div></div>
+<div class="blobs"><div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div><div class="blob b4"></div></div>
 <div class="sparkles" id="sparkles"></div>
 <div class="wrap">
 
@@ -480,7 +555,7 @@
   <!-- ============ REGISTRO (Andrea) ============ -->
   <section class="tab visible" id="tab-registro">
     <div class="card hero">
-      <div class="big" id="heroCount">0</div>
+      <div class="ringwrap"><div class="big" id="heroCount">0</div></div>
       <div class="lbl">respuestas registradas hoy 🔥</div>
       <div class="split">
         <span>💬 Mensajes: <b id="heroMsg">0</b></span>
@@ -1328,7 +1403,11 @@ function renderLine(evs) {
   <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Evolución: respondidos, llegados y agendados">
     ${gridLines.join("")}
     <line x1="${padL}" y1="${y(0)}" x2="${W - padR}" y2="${y(0)}" stroke="${baseC}" stroke-width="1"/>
-    <path d="${areaFill}" fill="${c1}" opacity="0.08"/>
+    <defs><linearGradient id="areaG" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="${c1}" stop-opacity="0.25"/>
+      <stop offset="1" stop-color="${c1}" stop-opacity="0"/>
+    </linearGradient></defs>
+    <path d="${areaFill}" fill="url(#areaG)"/>
     <path d="${path(resp)}" fill="none" stroke="${c1}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ln"/>
     <path d="${path(lleg)}" fill="none" stroke="${c2}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ln"/>
     <path d="${path(agen)}" fill="none" stroke="${c3}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ln"/>
