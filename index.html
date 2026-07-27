@@ -19,6 +19,7 @@
     --s2: #eb6834;  /* EDOMEX / Instagram / Llegados */
     --s3: #1baf7a;  /* Autonomía / TikTok / Agendados */
     --s4: #eda100;  /* Fundación / YouTube */
+    --s5: #e87ba4;  /* Google */
     --good: #006300;
     --accent: #2a78d6;
     --shadow: 0 1px 3px rgba(11,11,11,0.06), 0 4px 16px rgba(11,11,11,0.05);
@@ -37,6 +38,7 @@
     --s2: #d95926;
     --s3: #199e70;
     --s4: #c98500;
+    --s5: #d55181;
     --good: #0ca30c;
     --accent: #3987e5;
     --shadow: 0 1px 3px rgba(0,0,0,0.4);
@@ -56,6 +58,7 @@
       --s2: #d95926;
       --s3: #199e70;
       --s4: #c98500;
+    --s5: #d55181;
       --good: #0ca30c;
       --accent: #3987e5;
       --shadow: 0 1px 3px rgba(0,0,0,0.4);
@@ -186,7 +189,7 @@
 
   /* ---------- Selectors ---------- */
   .grid2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
-  @media (min-width: 640px) { .grid4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; } }
+  @media (min-width: 640px) { .grid4 { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; } }
   @media (max-width: 639px) { .grid4 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; } }
 
   .opt {
@@ -519,6 +522,27 @@
   ::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--accent) 35%, transparent); border-radius: 6px; }
   ::-webkit-scrollbar-thumb:hover { background: color-mix(in srgb, var(--accent) 55%, transparent); }
 
+  /* ---------- Comentarios negativos ---------- */
+  .neg-ctx { font-size: 12.5px; color: var(--text-2); margin-bottom: 10px; }
+  .neg-ctx b { color: var(--text-1); }
+  .neg-row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .neg-btn {
+    flex: 1; min-width: 130px; padding: 14px 10px; font-size: 14px; font-weight: 700;
+    border: none; border-radius: 12px; color: #fff;
+    background: linear-gradient(135deg, #d03b3b, #ec835a);
+    box-shadow: 0 4px 14px rgba(208,59,59,0.28);
+    transition: transform .15s ease, box-shadow .2s ease;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+  }
+  .neg-btn span { background: rgba(255,255,255,.22); border-radius: 999px; padding: 2px 9px; font-size: 12px; }
+  .neg-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(208,59,59,0.4); }
+  .neg-btn:active { transform: scale(.95); }
+
+  /* ---------- Candado de admin ---------- */
+  .pin-msg { font-size: 12.5px; font-weight: 600; margin-top: 8px; min-height: 16px; color: #d03b3b; }
+  .modal.shake { animation: shake .4s ease; }
+  @keyframes shake { 20%, 60% { transform: translateX(-8px); } 40%, 80% { transform: translateX(8px); } }
+
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { animation-duration: .001s !important; animation-iteration-count: 1 !important; }
   }
@@ -602,17 +626,28 @@
 
       <button class="undo-btn" id="regUndo">↩︎ Deshacer último registro</button>
     </div>
+
+    <div class="card">
+      <h2>😠 Comentario negativo</h2>
+      <div class="sub">¿Llegó una queja? Un toque y queda registrada — usa la cuenta, red y fecha elegidas arriba.</div>
+      <div class="neg-ctx" id="negCtx"></div>
+      <div class="neg-row">
+        <button class="neg-btn" data-m="mala">😠 Mala atención <span>+1</span></button>
+        <button class="neg-btn" data-m="costos">💰 Costos <span>+1</span></button>
+        <button class="neg-btn" data-m="otro">❓ Otro <span>+1</span></button>
+      </div>
+    </div>
   </section>
 
   <!-- ============ CONTACT (Fabian) ============ -->
   <section class="tab" id="tab-contact">
     <div class="card">
       <h2>Contact Center</h2>
-      <div class="sub">Registra los mensajes que llegaron al WhatsApp, las citas agendadas y las citas asistidas. Sin cuenta, directo al grano.</div>
+      <div class="sub">Registra los leads que llegaron al WhatsApp, las citas agendadas y las citas asistidas. Sin cuenta, directo al grano.</div>
 
       <div class="field-lbl">¿Qué vas a registrar?</div>
       <div class="seg" id="conTipo">
-        <button data-v="llegada" class="sel">📥 Llegó</button>
+        <button data-v="llegada" class="sel">📥 Lead</button>
         <button data-v="agendada">📅 Agendada</button>
         <button data-v="asistida">✅ Asistida</button>
       </div>
@@ -654,25 +689,26 @@
 
     <div class="tiles">
       <div class="tile" style="--tile-c: var(--s1)"><div class="t-lbl">Respondidos</div><div class="t-val" id="stTotal">0</div><div class="t-sub" id="stTotalSub"></div></div>
-      <div class="tile" style="--tile-c: var(--s2)"><div class="t-lbl">Llegaron a Contact</div><div class="t-val" id="stCon">0</div><div class="t-sub" id="stConSub"></div></div>
+      <div class="tile" style="--tile-c: var(--s2)"><div class="t-lbl">Leads en Contact</div><div class="t-val" id="stCon">0</div><div class="t-sub" id="stConSub"></div></div>
       <div class="tile" style="--tile-c: var(--s3)"><div class="t-lbl">Agendados</div><div class="t-val" id="stAge">0</div><div class="t-sub" id="stAgeSub"></div></div>
       <div class="tile" style="--tile-c: var(--s4)"><div class="t-lbl">Asistieron</div><div class="t-val" id="stAsi">0</div><div class="t-sub" id="stAsiSub"></div></div>
+      <div class="tile" style="--tile-c: #d03b3b"><div class="t-lbl">Negativos</div><div class="t-val" id="stNeg">0</div><div class="t-sub" id="stNegSub"></div></div>
       <div class="tile" style="--tile-c: var(--accent)"><div class="t-lbl">Conversión total</div><div class="t-val" id="stConv">—</div><div class="t-sub">de respuesta a asistencia</div></div>
     </div>
 
     <div class="card">
       <h2>Embudo del periodo</h2>
-      <div class="sub">Respondidos → Llegaron a Contact → Agendados → Asistieron</div>
+      <div class="sub">Respondidos → Leads en Contact → Agendados → Asistieron</div>
       <div class="funnel" id="funnel"></div>
     </div>
 
     <div class="card">
       <h2>Evolución</h2>
-      <div class="sub" id="lineSub">Respondidos vs. llegados vs. agendados vs. asistidos</div>
+      <div class="sub" id="lineSub">Respondidos vs. leads vs. agendados vs. asistidos</div>
       <div class="linewrap" id="lineChart"></div>
       <div class="legend">
         <span><span class="dot" style="background:var(--s1)"></span> Respondidos (Andrea)</span>
-        <span><span class="dot" style="background:var(--s2)"></span> Llegaron a Contact</span>
+        <span><span class="dot" style="background:var(--s2)"></span> Leads en Contact</span>
         <span><span class="dot" style="background:var(--s3)"></span> Agendados</span>
         <span><span class="dot" style="background:var(--s4)"></span> Asistieron</span>
       </div>
@@ -688,6 +724,15 @@
       <h2>Respuestas por red social</h2>
       <div class="sub">Mensajes + comentarios en el periodo</div>
       <div class="bars" id="barsRed"></div>
+    </div>
+
+    <div class="card">
+      <h2>Comentarios negativos</h2>
+      <div class="sub">Quejas registradas en el periodo — para ver qué hay que bajar</div>
+      <div class="field-lbl">Por motivo</div>
+      <div class="bars" id="barsNegMotivo"></div>
+      <div class="field-lbl">Por cuenta</div>
+      <div class="bars" id="barsNegCuenta"></div>
     </div>
 
     <div class="card">
@@ -740,6 +785,19 @@
 </div>
 
 <canvas id="confetti"></canvas>
+<div class="overlay" id="pinOverlay">
+  <div class="card modal" id="pinModal">
+    <h2>🔒 Solo administrador</h2>
+    <div class="sub">Borrar registros requiere la contraseña de administrador (Fabian).</div>
+    <input id="pinInput" type="password" placeholder="Contraseña" autocomplete="off">
+    <div class="pin-msg" id="pinMsg"></div>
+    <div class="data-actions">
+      <button id="pinOk">🔓 Desbloquear</button>
+      <button id="pinCancel">Cancelar</button>
+    </div>
+  </div>
+</div>
+
 <div id="toast"></div>
 <div id="tip"></div>
 
@@ -758,8 +816,11 @@ const REDES = [
   { id: "instagram", nombre: "Instagram" },
   { id: "tiktok",    nombre: "TikTok" },
   { id: "youtube",   nombre: "YouTube" },
+  { id: "google",    nombre: "Google" },
 ];
-const SLOT = ["var(--s1)", "var(--s2)", "var(--s3)", "var(--s4)"];
+const SLOT = ["var(--s1)", "var(--s2)", "var(--s3)", "var(--s4)", "var(--s5)"];
+const NEG_LBL = { mala: "mala atención", costos: "costos", otro: "otro motivo" };
+const esNeg = t => typeof t === "string" && t.indexOf("neg_") === 0;
 const cuentaColor = id => SLOT[CUENTAS.findIndex(c => c.id === id)] || "var(--s1)";
 const redColor    = id => SLOT[REDES.findIndex(r => r.id === id)]   || "var(--s1)";
 const cuentaNombre = id => { const c = CUENTAS.find(c => c.id === id); return c ? c.nombre : (id || ""); };
@@ -770,6 +831,7 @@ const NET_ICONS = {
   instagram: '<svg class="net-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="4" width="16" height="16" rx="4.5"/><circle cx="12" cy="12" r="3.6"/><circle cx="16.8" cy="7.2" r="1.1" fill="currentColor" stroke="none"/></svg>',
   tiktok:    '<svg class="net-ic" viewBox="0 0 24 24" fill="currentColor"><path d="M16.7 4c.3 1.7 1.4 3 3.3 3.3v2.8c-1.3 0-2.4-.4-3.3-1v5.4c0 3.2-2.1 5.5-5.2 5.5-2.9 0-5-2.1-5-4.9 0-2.9 2.4-5 5.5-4.8v2.9c-.3-.1-.6-.1-.9-.1-1.3 0-2.2.9-2.2 2.1s.9 2 2.1 2c1.4 0 2.3-1 2.3-2.7V4h3.4z"/></svg>',
   youtube:   '<svg class="net-ic" viewBox="0 0 24 24" fill="currentColor"><path d="M21.5 8s-.2-1.4-.8-2c-.7-.8-1.6-.8-2-.9C15.9 4.9 12 4.9 12 4.9s-3.9 0-6.7.2c-.4 0-1.3.1-2 .9-.6.6-.8 2-.8 2S2.3 9.6 2.3 11.3v1.5c0 1.6.2 3.3.2 3.3s.2 1.4.8 2c.7.8 1.7.7 2.1.8 1.5.1 6.6.2 6.6.2s3.9 0 6.7-.2c.4-.1 1.3-.1 2-.9.6-.6.8-2 .8-2s.2-1.6.2-3.3v-1.5c0-1.6-.2-3.2-.2-3.2zM10 14.6V8.9l5.2 2.9L10 14.6z"/></svg>',
+  google:    '<svg class="net-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M20.5 12H12"/><path d="M20.5 12a8.5 8.5 0 1 1-2.5-6"/></svg>',
 };
 
 /* ================= State ================= */
@@ -824,20 +886,21 @@ function addEvent(who, tipo, cuenta, red, cantidad, fechaKey) {
   save();
   if (sel.syncUrl) { pending.push({ op: "add", ev }); savePending(); scheduleSync(); }
   renderAll();
-  const verbo = tipo === "llegada" ? "llegada(s) a Contact"
+  const verbo = tipo === "llegada" ? "lead(s) a Contact"
               : tipo === "agendada" ? "cita(s) agendada(s)"
               : tipo === "asistida" ? "cita(s) asistida(s)"
+              : esNeg(tipo) ? "queja(s) por " + (NEG_LBL[tipo.slice(4)] || "otro motivo")
               : tipo === "mensaje" ? "mensaje(s)" : "comentario(s)";
   const donde = cuenta ? " · " + cuentaNombre(cuenta) : "";
   const dia = (fechaKey && fechaKey !== todayKey()) ? " · " + fechaKey : "";
-  toast(`✅ +${cantidad} ${verbo}${donde}${dia}`);
-  if (who === "andrea") {
+  toast(`${esNeg(tipo) ? "📝" : "✅"} +${cantidad} ${verbo}${donde}${dia}`);
+  if (who === "andrea" && !esNeg(tipo)) {
     const el = document.getElementById("heroCount");
     el.classList.remove("bump"); void el.offsetWidth; el.classList.add("bump");
     /* celebración cada 25 respuestas del día */
     if (!fechaKey || fechaKey === todayKey()) {
       const totHoy = state.events
-        .filter(e => e.who === "andrea" && dayKey(e.ts) === todayKey())
+        .filter(e => e.who === "andrea" && !esNeg(e.tipo) && dayKey(e.ts) === todayKey())
         .reduce((s, e) => s + e.cantidad, 0);
       const prev = totHoy - cantidad;
       if (Math.floor(totHoy / 25) > Math.floor(prev / 25)) {
@@ -1105,6 +1168,7 @@ function syncOptions() {
   document.querySelectorAll("#regTipo button").forEach(b => b.classList.toggle("sel", b.dataset.v === sel.regTipo));
   document.querySelectorAll("#conTipo button").forEach(b => b.classList.toggle("sel", b.dataset.v === sel.conTipo));
   document.querySelectorAll("#filters button").forEach(b => b.classList.toggle("sel", b.dataset.r === sel.range));
+  updateNegCtx();
 }
 
 buildOptions("regCuentas", CUENTAS, cuentaColor, v => sel.regCuenta = v, false);
@@ -1132,6 +1196,7 @@ function wireDate(rowId, inputId, warnId) {
       c.classList.toggle("sel", (c.dataset.d === "0" && isToday) || (c.dataset.d === "1" && isYesterday));
     });
     warn.classList.toggle("show", !isToday);
+    updateNegCtx();
   }
   row.querySelectorAll(".chip").forEach(c => {
     c.onclick = () => { input.value = dayKey(daysAgo(Number(c.dataset.d)).getTime()); refresh(); };
@@ -1206,21 +1271,29 @@ applyTheme();
 
 /* ================= Agregaciones ================= */
 function agg(events) {
-  const out = { total: 0, msg: 0, com: 0, con: 0, age: 0, asi: 0, porCuenta: {}, porRed: {} };
-  CUENTAS.forEach(c => out.porCuenta[c.id] = { msg: 0, com: 0 });
+  const out = { total: 0, msg: 0, com: 0, con: 0, age: 0, asi: 0, neg: 0,
+    negM: { mala: 0, costos: 0, otro: 0 }, porCuenta: {}, porRed: {}, negPorCuenta: {} };
+  CUENTAS.forEach(c => { out.porCuenta[c.id] = { msg: 0, com: 0 }; out.negPorCuenta[c.id] = 0; });
   REDES.forEach(r => out.porRed[r.id] = { resp: 0 });
   for (const ev of events) {
     if (ev.who === "contact") {
       if (ev.tipo === "agendada") out.age += ev.cantidad;
       else if (ev.tipo === "asistida") out.asi += ev.cantidad;
       else out.con += ev.cantidad;
-    } else {
-      const pc = out.porCuenta[ev.cuenta], pr = out.porRed[ev.red];
-      out.total += ev.cantidad;
-      if (ev.tipo === "mensaje") { out.msg += ev.cantidad; if (pc) pc.msg += ev.cantidad; }
-      else { out.com += ev.cantidad; if (pc) pc.com += ev.cantidad; }
-      if (pr) pr.resp += ev.cantidad;
+      continue;
     }
+    if (esNeg(ev.tipo)) {
+      out.neg += ev.cantidad;
+      const m = ev.tipo.slice(4);
+      if (out.negM[m] !== undefined) out.negM[m] += ev.cantidad; else out.negM.otro += ev.cantidad;
+      if (out.negPorCuenta[ev.cuenta] !== undefined) out.negPorCuenta[ev.cuenta] += ev.cantidad;
+      continue;
+    }
+    const pc = out.porCuenta[ev.cuenta], pr = out.porRed[ev.red];
+    out.total += ev.cantidad;
+    if (ev.tipo === "mensaje") { out.msg += ev.cantidad; if (pc) pc.msg += ev.cantidad; }
+    else { out.com += ev.cantidad; if (pc) pc.com += ev.cantidad; }
+    if (pr) pr.resp += ev.cantidad;
   }
   return out;
 }
@@ -1243,7 +1316,7 @@ function renderAll() {
   const tAge = pct(hoy.age, hoy.con);
   const tAsi = pct(hoy.asi, hoy.age);
   document.getElementById("conCompare").innerHTML = `
-    <div><div class="cmp-big">${hoy.con} / ${hoy.total}</div><div class="cmp-lbl">llegaron vs. respondidos hoy${tLleg !== null ? " (" + tLleg + "%)" : ""}</div></div>
+    <div><div class="cmp-big">${hoy.con} / ${hoy.total}</div><div class="cmp-lbl">leads vs. respondidos hoy${tLleg !== null ? " (" + tLleg + "%)" : ""}</div></div>
     <div><div class="cmp-big">${hoy.age}</div><div class="cmp-lbl">agendados hoy${tAge !== null ? " (" + tAge + "% de los que llegaron)" : ""}</div></div>
     <div><div class="cmp-big">${hoy.asi}</div><div class="cmp-lbl">asistieron hoy${tAsi !== null ? " (" + tAsi + "% de los agendados)" : ""}</div></div>
     <div style="flex:1;min-width:160px"><div class="cmp-lbl">Hoy Andrea respondió <b>${hoy.msg}</b> mensaje(s) y <b>${hoy.com}</b> comentario(s).</div></div>`;
@@ -1280,6 +1353,20 @@ function renderAll() {
     (r) => `<div class="tp-t">${r.label}</div>
       <div class="tp-r"><span class="dot" style="background:${r.color}"></span>Respondidos<b>${r.extra.resp}</b></div>`);
 
+  /* --- negativos --- */
+  countUp(document.getElementById("stNeg"), a.neg);
+  const topM = [["mala", "mala atención"], ["costos", "costos"], ["otro", "otro"]]
+    .sort((m1, m2) => a.negM[m2[0]] - a.negM[m1[0]])[0];
+  document.getElementById("stNegSub").textContent = a.neg > 0 ? "principal: " + topM[1] : "quejas registradas";
+  renderBars("barsNegMotivo", [
+    { label: "😠 Mala atención", color: "#d03b3b", value: a.negM.mala },
+    { label: "💰 Costos", color: "#ec835a", value: a.negM.costos },
+    { label: "❓ Otro", color: "var(--muted)", value: a.negM.otro },
+  ], r => `<div class="tp-t">${r.label}</div><div class="tp-r">Quejas<b>${r.value}</b></div>`);
+  renderBars("barsNegCuenta",
+    CUENTAS.map(c => ({ label: c.nombre, color: cuentaColor(c.id), value: a.negPorCuenta[c.id] })),
+    r => `<div class="tp-t">${r.label}</div><div class="tp-r">Quejas<b>${r.value}</b></div>`);
+
   renderLine(evs);
   renderTable(a);
   renderHist();
@@ -1295,7 +1382,7 @@ function renderFunnel(a) {
   }
   const steps = [
     { label: "Respondidos", value: a.total, color: "var(--s1)" },
-    { label: "Llegaron", value: a.con, color: "var(--s2)", rate: pct(a.con, a.total), rateLbl: "llegaron a Contact" },
+    { label: "Leads", value: a.con, color: "var(--s2)", rate: pct(a.con, a.total), rateLbl: "llegaron como lead" },
     { label: "Agendados", value: a.age, color: "var(--s3)", rate: pct(a.age, a.con), rateLbl: "se agendaron" },
     { label: "Asistieron", value: a.asi, color: "var(--s4)", rate: pct(a.asi, a.age), rateLbl: "asistieron a su cita" },
   ];
@@ -1373,7 +1460,7 @@ function renderLine(evs) {
       else if (ev.tipo === "asistida") asis[i] += ev.cantidad;
       else lleg[i] += ev.cantidad;
     }
-    else resp[i] += ev.cantidad;
+    else if (!esNeg(ev.tipo)) resp[i] += ev.cantidad;
   }
   if (resp.every(v => v === 0) && lleg.every(v => v === 0) && agen.every(v => v === 0) && asis.every(v => v === 0)) {
     box.innerHTML = '<div class="empty">Sin registros en este periodo — cuando registren, aquí verás las curvas 📈</div>';
@@ -1467,7 +1554,7 @@ function renderLine(evs) {
     p4.setAttribute("cx", xx); p4.setAttribute("cy", y(asis[best])); p4.setAttribute("opacity", "1");
     showTip(`<div class="tp-t">${labels[best]}</div>
       <div class="tp-r"><span class="dot" style="background:${c1}"></span>Respondidos<b>${resp[best]}</b></div>
-      <div class="tp-r"><span class="dot" style="background:${c2}"></span>Llegaron<b>${lleg[best]}</b></div>
+      <div class="tp-r"><span class="dot" style="background:${c2}"></span>Leads<b>${lleg[best]}</b></div>
       <div class="tp-r"><span class="dot" style="background:${c3}"></span>Agendados<b>${agen[best]}</b></div>
       <div class="tp-r"><span class="dot" style="background:${c4}"></span>Asistieron<b>${asis[best]}</b></div>`,
       e.clientX, e.clientY);
@@ -1529,17 +1616,20 @@ function renderHist() {
         desc = `<b>+${ev.cantidad}</b> cita(s) asistida(s)`;
       } else {
         badge = '<span class="h-badge" style="background:var(--s2)">Contact</span>';
-        desc = `<b>+${ev.cantidad}</b> mensaje(s) que llegaron`;
+        desc = `<b>+${ev.cantidad}</b> lead(s) que llegaron`;
       }
       if (ev.cuenta) desc += ` · ${cuentaNombre(ev.cuenta)}`;
+    } else if (esNeg(ev.tipo)) {
+      badge = '<span class="h-badge" style="background:#d03b3b">Queja</span>';
+      desc = `<b>+${ev.cantidad}</b> negativo(s): ${NEG_LBL[ev.tipo.slice(4)] || "otro"} · ${cuentaNombre(ev.cuenta)} · ${redNombre(ev.red)}`;
     } else {
       badge = '<span class="h-badge" style="background:var(--s1)">Andrea</span>';
       desc = `<b>+${ev.cantidad}</b> ${ev.tipo === "mensaje" ? "mensaje(s)" : "comentario(s)"} · ${cuentaNombre(ev.cuenta)} · ${redNombre(ev.red)}`;
     }
     item.innerHTML = `${badge}<div class="h-main">${desc}</div>
       <span class="h-time">${FMT_HIST.format(ev.ts)}</span>
-      <button class="h-del" title="Eliminar">✕</button>`;
-    item.querySelector(".h-del").onclick = () => deleteEvent(ev.id);
+      <button class="h-del" title="Eliminar (solo admin)">✕</button>`;
+    item.querySelector(".h-del").onclick = () => requireAdmin(() => deleteEvent(ev.id));
     box.appendChild(item);
   }
 }
@@ -1559,7 +1649,9 @@ document.getElementById("expCsv").onclick = () => {
     csv += [dayKey(ev.ts), pad(d.getHours()) + ":" + pad(d.getMinutes()),
       ev.who === "contact" ? "Contact" : "Andrea",
       '"' + (ev.cuenta ? cuentaNombre(ev.cuenta) : "") + '"',
-      ev.red ? redNombre(ev.red) : "", ev.tipo, ev.cantidad].join(",") + "\n";
+      ev.red ? redNombre(ev.red) : "",
+      esNeg(ev.tipo) ? '"negativo: ' + (NEG_LBL[ev.tipo.slice(4)] || "otro") + '"' : ev.tipo,
+      ev.cantidad].join(",") + "\n";
   }
   download("responding_" + todayKey() + ".csv", csv, "text/csv;charset=utf-8");
   toast("CSV exportado ⬇️");
@@ -1593,7 +1685,7 @@ document.getElementById("impFile").addEventListener("change", e => {
   };
   reader.readAsText(f);
 });
-document.getElementById("wipeBtn").onclick = () => {
+document.getElementById("wipeBtn").onclick = () => requireAdmin(() => {
   if (confirm("¿Borrar TODOS los registros? Esta acción no se puede deshacer.") &&
       confirm("¿Seguro? Se recomienda exportar un respaldo JSON antes.")) {
     if (sel.syncUrl) {
@@ -1608,7 +1700,58 @@ document.getElementById("wipeBtn").onclick = () => {
     save(); renderAll();
     toast("Todos los registros fueron borrados");
   }
+});
+
+/* ================= Candado de administrador ================= */
+const ADMIN_PASS = "ETH2026";
+let adminOk = false, pendingAdminFn = null;
+function requireAdmin(fn) {
+  if (adminOk) { fn(); return; }
+  pendingAdminFn = fn;
+  document.getElementById("pinInput").value = "";
+  document.getElementById("pinMsg").textContent = "";
+  document.getElementById("pinOverlay").classList.add("show");
+  setTimeout(() => document.getElementById("pinInput").focus(), 60);
+}
+document.getElementById("pinOk").onclick = () => {
+  if (document.getElementById("pinInput").value === ADMIN_PASS) {
+    adminOk = true;
+    document.getElementById("pinOverlay").classList.remove("show");
+    toast("🔓 Modo admin activado");
+    const fn = pendingAdminFn; pendingAdminFn = null;
+    if (fn) fn();
+  } else {
+    document.getElementById("pinMsg").textContent = "❌ Contraseña incorrecta";
+    const m = document.getElementById("pinModal");
+    m.classList.remove("shake"); void m.offsetWidth; m.classList.add("shake");
+  }
 };
+document.getElementById("pinCancel").onclick = () => {
+  pendingAdminFn = null;
+  document.getElementById("pinOverlay").classList.remove("show");
+};
+document.getElementById("pinInput").addEventListener("keydown", e => {
+  if (e.key === "Enter") document.getElementById("pinOk").onclick();
+});
+document.getElementById("pinOverlay").addEventListener("click", e => {
+  if (e.target === document.getElementById("pinOverlay")) {
+    pendingAdminFn = null;
+    document.getElementById("pinOverlay").classList.remove("show");
+  }
+});
+
+/* ================= Comentarios negativos (registro rápido) ================= */
+function updateNegCtx() {
+  const el = document.getElementById("negCtx");
+  if (!el) return;
+  const f = document.getElementById("regFecha").value;
+  el.innerHTML = `Se registrará en: <b>${cuentaNombre(sel.regCuenta)}</b> · ${redNombre(sel.regRed)} · ${f === todayKey() ? "hoy" : f}`;
+}
+document.querySelectorAll(".neg-btn").forEach(b => {
+  b.onclick = () => {
+    addEvent("andrea", "neg_" + b.dataset.m, sel.regCuenta, sel.regRed, 1, getRegFecha());
+  };
+});
 
 /* re-render al cambiar tamaño (gráfica de línea responsiva) */
 let rzT;
