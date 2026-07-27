@@ -404,10 +404,54 @@
   #tip .tp-r { display: flex; align-items: center; gap: 6px; color: var(--text-2); padding: 1px 0; }
   #tip .tp-r b { color: var(--text-1); margin-left: auto; padding-left: 10px; font-variant-numeric: tabular-nums; }
   #tip .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
+  /* ---------- Animación extra: partículas, confeti, entradas ---------- */
+  .sparkles { position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
+  .spark { position: absolute; bottom: -30px; opacity: 0; animation: rise linear infinite; }
+  .spark.dot { border-radius: 50%; }
+  .spark.stick { border-radius: 2px; }
+  @keyframes rise {
+    0%   { transform: translateY(0) rotate(0deg); opacity: 0; }
+    10%  { opacity: var(--sp-o, .3); }
+    85%  { opacity: var(--sp-o, .3); }
+    100% { transform: translateY(-110vh) rotate(260deg); opacity: 0; }
+  }
+  #confetti { position: fixed; inset: 0; pointer-events: none; z-index: 600; }
+
+  section.tab.visible .card { animation: cardIn .55s cubic-bezier(.2,.7,.3,1) both; }
+  section.tab.visible .card:nth-child(2) { animation-delay: .08s; }
+  section.tab.visible .card:nth-child(3) { animation-delay: .16s; }
+  section.tab.visible .card:nth-child(4) { animation-delay: .24s; }
+  section.tab.visible .card:nth-child(5) { animation-delay: .32s; }
+  section.tab.visible .card:nth-child(6) { animation-delay: .4s; }
+  @keyframes cardIn { from { opacity: 0; transform: translateY(16px) scale(.985); } to { opacity: 1; transform: none; } }
+
+  .tiles .tile { animation: cardIn .55s cubic-bezier(.2,.7,.3,1) both; transition: transform .2s ease, box-shadow .2s ease; }
+  .tiles .tile:nth-child(2) { animation-delay: .06s; }
+  .tiles .tile:nth-child(3) { animation-delay: .12s; }
+  .tiles .tile:nth-child(4) { animation-delay: .18s; }
+  .tile:hover { transform: translateY(-3px); box-shadow: 0 8px 24px color-mix(in srgb, var(--tile-c, var(--accent)) 18%, transparent); }
+  .tile .t-val.glow { animation: valGlow .7s ease; }
+  @keyframes valGlow {
+    30% { text-shadow: 0 0 16px color-mix(in srgb, var(--tile-c, var(--accent)) 70%, transparent); transform: scale(1.07); }
+  }
+  .tile .t-val { transform-origin: left center; }
+
+  .hero .big { text-shadow: 0 4px 28px color-mix(in srgb, var(--s1) 28%, transparent); }
+  .opt:active { transform: scale(.96); }
+  nav.tabs button:active { transform: scale(.95); }
+  .chip:hover { transform: translateY(-1px); }
+  .card:hover { border-color: color-mix(in srgb, var(--accent) 22%, var(--border)); }
+
+  @media (prefers-reduced-motion: reduce) {
+    .blob, .spark, .hero .dots span, .bar-fill::after, .ring, .brand .logo { animation: none !important; }
+    section.tab.visible .card, .tiles .tile { animation: none; }
+  }
 </style>
 </head>
 <body>
 <div class="blobs"><div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div></div>
+<div class="sparkles" id="sparkles"></div>
 <div class="wrap">
 
   <header>
@@ -617,6 +661,7 @@
   </div>
 </div>
 
+<canvas id="confetti"></canvas>
 <div id="toast"></div>
 <div id="tip"></div>
 
@@ -710,6 +755,17 @@ function addEvent(who, tipo, cuenta, red, cantidad, fechaKey) {
   if (who === "andrea") {
     const el = document.getElementById("heroCount");
     el.classList.remove("bump"); void el.offsetWidth; el.classList.add("bump");
+    /* celebración cada 25 respuestas del día */
+    if (!fechaKey || fechaKey === todayKey()) {
+      const totHoy = state.events
+        .filter(e => e.who === "andrea" && dayKey(e.ts) === todayKey())
+        .reduce((s, e) => s + e.cantidad, 0);
+      const prev = totHoy - cantidad;
+      if (Math.floor(totHoy / 25) > Math.floor(prev / 25)) {
+        confettiBurst(innerWidth / 2, innerHeight * 0.3, true);
+        setTimeout(() => toast(`🎉 ¡Ya van ${Math.floor(totHoy / 25) * 25}+ respuestas hoy! Imparable 💪`), 700);
+      }
+    }
   }
 }
 function removeEventAt(i) {
@@ -844,6 +900,69 @@ document.getElementById("cfgRemove").onclick = () => {
   }
 };
 
+/* ================= Animación ambiental ================= */
+const REDUCED = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+/* bolitas y palitos flotando de fondo */
+(function makeSparks() {
+  if (REDUCED) return;
+  const box = document.getElementById("sparkles");
+  const colors = ["var(--s1)", "var(--s2)", "var(--s3)", "var(--s4)"];
+  for (let i = 0; i < 20; i++) {
+    const s = document.createElement("span");
+    const stick = Math.random() < 0.4;
+    s.className = "spark " + (stick ? "stick" : "dot");
+    const size = stick ? 3 : 4 + Math.random() * 5;
+    s.style.width = size + "px";
+    s.style.height = (stick ? 14 + Math.random() * 14 : size) + "px";
+    s.style.left = Math.random() * 100 + "%";
+    s.style.background = colors[i % 4];
+    s.style.setProperty("--sp-o", (0.1 + Math.random() * 0.22).toFixed(2));
+    s.style.animationDuration = (16 + Math.random() * 20) + "s";
+    s.style.animationDelay = (-Math.random() * 36) + "s";
+    box.appendChild(s);
+  }
+})();
+
+/* confeti al registrar */
+const confettiCanvas = document.getElementById("confetti");
+const cctx = confettiCanvas.getContext("2d");
+let confParts = [], confRunning = false;
+function sizeConfetti() { confettiCanvas.width = innerWidth; confettiCanvas.height = innerHeight; }
+sizeConfetti();
+addEventListener("resize", sizeConfetti);
+function confettiBurst(x, y, big) {
+  if (REDUCED) return;
+  const css = getComputedStyle(document.documentElement);
+  const colors = ["--s1", "--s2", "--s3", "--s4"].map(v => css.getPropertyValue(v).trim());
+  const n = big ? 130 : 34;
+  for (let i = 0; i < n; i++) {
+    const a = Math.random() * Math.PI * 2, sp = (big ? 6 : 4) * (0.4 + Math.random());
+    confParts.push({
+      x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - (big ? 3.5 : 2.2), g: 0.13,
+      w: 4 + Math.random() * 4, h: 6 + Math.random() * 6,
+      r: Math.random() * Math.PI, vr: (Math.random() - 0.5) * 0.3,
+      c: colors[i % 4], life: 1, decay: 0.011 + Math.random() * 0.012,
+    });
+  }
+  if (!confRunning) { confRunning = true; requestAnimationFrame(confettiTick); }
+}
+function confettiTick() {
+  cctx.clearRect(0, 0, confettiCanvas.width, confettiCanvas.height);
+  confParts = confParts.filter(p => p.life > 0);
+  for (const p of confParts) {
+    p.x += p.vx; p.y += p.vy; p.vy += p.g; p.r += p.vr; p.life -= p.decay;
+    cctx.save();
+    cctx.translate(p.x, p.y); cctx.rotate(p.r);
+    cctx.globalAlpha = Math.max(0, p.life);
+    cctx.fillStyle = p.c;
+    cctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+    cctx.restore();
+  }
+  if (confParts.length) requestAnimationFrame(confettiTick);
+  else { confRunning = false; cctx.clearRect(0, 0, confettiCanvas.width, confettiCanvas.height); }
+}
+
 /* ================= Toast / tooltip ================= */
 let toastTimer;
 function toast(msg) {
@@ -873,6 +992,7 @@ function countUp(el, target, suffix) {
   const from = lastVals[el.id] || 0;
   lastVals[el.id] = target;
   if (from === target) { el.textContent = target + suffix; return; }
+  el.classList.remove("glow"); void el.offsetWidth; el.classList.add("glow");
   const t0 = performance.now(), dur = 550;
   function step(t) {
     const p = Math.min(1, (t - t0) / dur), e = 1 - Math.pow(1 - p, 3);
@@ -949,13 +1069,20 @@ function wireQty(rowId, customId, customBtnId, fire) {
   document.querySelectorAll("#" + rowId + " .qty-btn").forEach(b => {
     b.onclick = () => {
       b.classList.remove("pulse"); void b.offsetWidth; b.classList.add("pulse");
+      const r = b.getBoundingClientRect();
+      confettiBurst(r.left + r.width / 2, r.top + r.height / 2, false);
       fire(Number(b.dataset.n));
     };
   });
   const input = document.getElementById(customId);
   const go = () => {
     const n = Number(input.value);
-    if (n >= 1) { fire(n); input.value = ""; }
+    if (n >= 1) {
+      const btn = document.getElementById(customBtnId);
+      const r = btn.getBoundingClientRect();
+      confettiBurst(r.left + r.width / 2, r.top + r.height / 2, false);
+      fire(n); input.value = "";
+    }
     else toast("Escribe una cantidad válida");
   };
   document.getElementById(customBtnId).onclick = go;
