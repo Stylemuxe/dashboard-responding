@@ -695,7 +695,6 @@
       <div class="tile" style="--tile-c: var(--s3)"><div class="t-lbl">Agendados</div><div class="t-val" id="stAge">0</div><div class="t-sub" id="stAgeSub"></div></div>
       <div class="tile" style="--tile-c: var(--s4)"><div class="t-lbl">Asistieron</div><div class="t-val" id="stAsi">0</div><div class="t-sub" id="stAsiSub"></div></div>
       <div class="tile" style="--tile-c: #d03b3b"><div class="t-lbl">Negativos</div><div class="t-val" id="stNeg">0</div><div class="t-sub" id="stNegSub"></div></div>
-      <div class="tile" style="--tile-c: var(--accent)"><div class="t-lbl">Conversión total</div><div class="t-val" id="stConv">—</div><div class="t-sub">de respuesta a asistencia</div></div>
     </div>
 
     <div class="card">
@@ -1350,9 +1349,6 @@ function renderAll() {
   countUp(document.getElementById("stAsi"), a.asi);
   const tasaAsi = pct(a.asi, a.age);
   document.getElementById("stAsiSub").innerHTML = tasaAsi === null ? "citas asistidas" : `<b class="good">${tasaAsi}%</b> de los agendados`;
-  const conv = pct(a.asi, a.total);
-  document.getElementById("stConv").textContent = conv === null ? "—" : conv + "%";
-
   renderFunnel(a);
 
   renderBars("barsCuenta",
