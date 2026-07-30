@@ -687,6 +687,12 @@
       <button data-r="7d">Últimos 7 días</button>
       <button data-r="30d">Últimos 30 días</button>
       <button data-r="todo">Todo</button>
+      <button data-r="custom">📅 Personalizado</button>
+    </div>
+    <div class="date-row" id="customRangeRow" style="display:none;margin-top:10px">
+      <input type="date" id="customFrom">
+      <span style="color:var(--text-2);font-size:13px">a</span>
+      <input type="date" id="customTo">
     </div>
 
     <div class="tiles">
@@ -848,7 +854,7 @@ const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 
 
 /* selección actual (se recuerda) */
 let sel = Object.assign(
-  { regCuenta: "et", regRed: "facebook", regTipo: "mensaje", conTipo: "llegada", range: "hoy", theme: "", syncUrl: "" },
+  { regCuenta: "et", regRed: "facebook", regTipo: "mensaje", conTipo: "llegada", range: "hoy", theme: "", syncUrl: "", customFrom: "", customTo: "" },
   JSON.parse(localStorage.getItem(LS_KEY + "_sel") || "{}")
 );
 function saveSel() { localStorage.setItem(LS_KEY + "_sel", JSON.stringify(sel)); }
@@ -867,9 +873,23 @@ function rangeStart(r) {
   if (r === "hoy") return daysAgo(0).getTime();
   if (r === "7d")  return daysAgo(6).getTime();
   if (r === "30d") return daysAgo(29).getTime();
+  if (r === "custom") {
+    if (!sel.customFrom) return 0;
+    const p = sel.customFrom.split("-").map(Number);
+    return new Date(p[0], p[1] - 1, p[2], 0, 0, 0, 0).getTime();
+  }
   return 0;
 }
-function inRange(ev) { return ev.ts >= rangeStart(sel.range); }
+function rangeEnd(r) {
+  if (r === "custom") {
+    const key = sel.customTo || sel.customFrom;
+    if (!key) return Date.now();
+    const p = key.split("-").map(Number);
+    return new Date(p[0], p[1] - 1, p[2], 23, 59, 59, 999).getTime();
+  }
+  return Date.now();
+}
+function inRange(ev) { return ev.ts >= rangeStart(sel.range) && ev.ts <= rangeEnd(sel.range); }
 function tsForDate(key) {
   if (!key || key === todayKey()) return Date.now();
   const p = key.split("-").map(Number);
@@ -1174,6 +1194,7 @@ function syncOptions() {
   });
   document.querySelectorAll("#conTipo button").forEach(b => b.classList.toggle("sel", b.dataset.v === sel.conTipo));
   document.querySelectorAll("#filters button").forEach(b => b.classList.toggle("sel", b.dataset.r === sel.range));
+  document.getElementById("customRangeRow").style.display = sel.range === "custom" ? "flex" : "none";
   updateNegCtx();
 }
 
@@ -1262,8 +1283,33 @@ document.querySelectorAll("nav.tabs button").forEach(b => {
 
 /* filtros de rango */
 document.querySelectorAll("#filters button").forEach(b => {
-  b.onclick = () => { sel.range = b.dataset.r; saveSel(); syncOptions(); renderAll(); };
+  b.onclick = () => {
+    sel.range = b.dataset.r;
+    if (sel.range === "custom" && !sel.customFrom) {
+      sel.customTo = todayKey();
+      sel.customFrom = dayKey(daysAgo(6).getTime());
+    }
+    saveSel(); syncOptions(); renderAll();
+  };
 });
+const customFromInput = document.getElementById("customFrom");
+const customToInput = document.getElementById("customTo");
+customFromInput.max = todayKey();
+customToInput.max = todayKey();
+function syncCustomInputs() {
+  customFromInput.value = sel.customFrom || "";
+  customToInput.value = sel.customTo || "";
+}
+syncCustomInputs();
+function onCustomChange() {
+  let from = customFromInput.value, to = customToInput.value;
+  if (from && to && from > to) { [from, to] = [to, from]; }
+  sel.customFrom = from; sel.customTo = to;
+  syncCustomInputs();
+  saveSel(); renderAll();
+}
+customFromInput.addEventListener("change", onCustomChange);
+customToInput.addEventListener("change", onCustomChange);
 
 /* tema */
 const themeBtn = document.getElementById("themeBtn");
@@ -1340,7 +1386,10 @@ function renderAll() {
   countUp(document.getElementById("stTotal"), a.total);
   countUp(document.getElementById("stCon"), a.con);
   countUp(document.getElementById("stAge"), a.age);
-  const lblRango = { hoy: "hoy", "7d": "últimos 7 días", "30d": "últimos 30 días", todo: "todo el tiempo" }[sel.range];
+  const fmtShort = key => { const p = key.split("-").map(Number); return new Date(p[0], p[1] - 1, p[2]).toLocaleDateString("es-MX", { day: "numeric", month: "short" }); };
+  const lblRango = sel.range === "custom"
+    ? (sel.customFrom && sel.customTo ? (sel.customFrom === sel.customTo ? fmtShort(sel.customFrom) : fmtShort(sel.customFrom) + " – " + fmtShort(sel.customTo)) : "rango personalizado")
+    : { hoy: "hoy", "7d": "últimos 7 días", "30d": "últimos 30 días", todo: "todo el tiempo" }[sel.range];
   document.getElementById("stTotalSub").textContent = a.msg + " msj · " + a.com + " com · " + a.res + " reseñas · " + lblRango;
   const tasaLleg = pct(a.con, a.total);
   document.getElementById("stConSub").innerHTML = tasaLleg === null ? "al WhatsApp del equipo" : `tasa de llegada: <b class="good">${tasaLleg}%</b>`;
@@ -1452,6 +1501,16 @@ function renderLine(evs) {
     const h = new Date().getHours();
     for (let i = 0; i <= h; i++) { buckets.push(i); labels.push(pad(i) + ":00"); }
     document.getElementById("lineSub").textContent = "Por hora · hoy";
+  } else if (sel.range === "custom" && sel.customFrom && sel.customTo) {
+    const start = new Date(rangeStart(sel.range));
+    const end = new Date(rangeEnd(sel.range));
+    const n = Math.min(120, Math.max(1, Math.round((end - start) / 86400000) + 1));
+    for (let i = 0; i < n; i++) {
+      const d = new Date(start); d.setDate(d.getDate() + i);
+      buckets.push(dayKey(d.getTime()));
+      labels.push(d.toLocaleDateString("es-MX", { day: "numeric", month: "short" }));
+    }
+    document.getElementById("lineSub").textContent = "Por día · periodo seleccionado";
   } else {
     const n = sel.range === "7d" ? 7 : sel.range === "30d" ? 30 :
       Math.min(60, Math.max(7, state.events.length ? Math.ceil((Date.now() - Math.min(...state.events.map(e => e.ts))) / 86400000) + 1 : 7));
