@@ -527,8 +527,6 @@
   ::-webkit-scrollbar-thumb:hover { background: color-mix(in srgb, var(--accent) 55%, transparent); }
 
   /* ---------- Comentarios negativos ---------- */
-  .neg-ctx { font-size: 12.5px; color: var(--text-2); margin-bottom: 10px; }
-  .neg-ctx b { color: var(--text-1); }
   .neg-texto {
     width: 100%; padding: 12px; font-size: 14px; font-family: inherit; resize: vertical;
     border: 1.5px solid var(--border); border-radius: 12px; background: var(--surface);
@@ -641,8 +639,15 @@
 
     <div class="card">
       <h2>😠 Comentario negativo</h2>
-      <div class="sub">¿Llegó una queja? Escribe qué dice (opcional) y toca el motivo — usa la cuenta, red y fecha elegidas arriba.</div>
-      <div class="neg-ctx" id="negCtx"></div>
+      <div class="sub">¿Llegó una queja? Elige de dónde viene, escribe qué dice (opcional) y toca el motivo — usa la fecha elegida arriba.</div>
+
+      <div class="field-lbl">Cuenta</div>
+      <div class="grid2" id="negCuentas"></div>
+
+      <div class="field-lbl">Red social</div>
+      <div class="grid4" id="negRedes"></div>
+
+      <div class="field-lbl">¿Qué dice el comentario? (opcional)</div>
       <textarea class="neg-texto" id="negTexto" maxlength="500" placeholder="Pega o escribe aquí lo que dice el comentario/queja… (opcional)"></textarea>
       <div class="neg-row">
         <button class="neg-btn" data-m="mala">😠 Mala atención <span>+1</span></button>
@@ -867,7 +872,7 @@ const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 
 
 /* selección actual (se recuerda) */
 let sel = Object.assign(
-  { regCuenta: "et", regRed: "facebook", regTipo: "mensaje", conTipo: "llegada", range: "hoy", theme: "", syncUrl: "", customFrom: "", customTo: "" },
+  { regCuenta: "et", regRed: "facebook", regTipo: "mensaje", conTipo: "llegada", range: "hoy", theme: "", syncUrl: "", customFrom: "", customTo: "", negCuenta: "et", negRed: "facebook" },
   JSON.parse(localStorage.getItem(LS_KEY + "_sel") || "{}")
 );
 function saveSel() { localStorage.setItem(LS_KEY + "_sel", JSON.stringify(sel)); }
@@ -1197,7 +1202,7 @@ function buildOptions(containerId, items, colorFn, setSel, withIcon) {
   });
 }
 function syncOptions() {
-  const map = { regCuentas: sel.regCuenta, regRedes: sel.regRed };
+  const map = { regCuentas: sel.regCuenta, regRedes: sel.regRed, negCuentas: sel.negCuenta, negRedes: sel.negRed };
   for (const [cid, val] of Object.entries(map)) {
     document.querySelectorAll("#" + cid + " .opt").forEach(b => b.classList.toggle("sel", b.dataset.id === val));
   }
@@ -1209,7 +1214,6 @@ function syncOptions() {
   document.querySelectorAll("#conTipo button").forEach(b => b.classList.toggle("sel", b.dataset.v === sel.conTipo));
   document.querySelectorAll("#filters button").forEach(b => b.classList.toggle("sel", b.dataset.r === sel.range));
   document.getElementById("customRangeRow").style.display = sel.range === "custom" ? "flex" : "none";
-  updateNegCtx();
 }
 
 buildOptions("regCuentas", CUENTAS, cuentaColor, v => sel.regCuenta = v, false);
@@ -1219,6 +1223,8 @@ buildOptions("regRedes",   REDES,   redColor,    v => {
   if (v === "google") sel.regTipo = "resena";
   else if (sel.regTipo === "resena") sel.regTipo = "mensaje";
 }, true);
+buildOptions("negCuentas", CUENTAS, cuentaColor, v => sel.negCuenta = v, false);
+buildOptions("negRedes",   REDES,   redColor,    v => sel.negRed = v, true);
 
 document.querySelectorAll("#regTipo button").forEach(b => {
   b.onclick = () => { sel.regTipo = b.dataset.v; saveSel(); syncOptions(); };
@@ -1242,7 +1248,6 @@ function wireDate(rowId, inputId, warnId) {
       c.classList.toggle("sel", (c.dataset.d === "0" && isToday) || (c.dataset.d === "1" && isYesterday));
     });
     warn.classList.toggle("show", !isToday);
-    updateNegCtx();
   }
   row.querySelectorAll(".chip").forEach(c => {
     c.onclick = () => { input.value = dayKey(daysAgo(Number(c.dataset.d)).getTime()); refresh(); };
@@ -1847,16 +1852,10 @@ document.getElementById("pinOverlay").addEventListener("click", e => {
 });
 
 /* ================= Comentarios negativos (registro rápido) ================= */
-function updateNegCtx() {
-  const el = document.getElementById("negCtx");
-  if (!el) return;
-  const f = document.getElementById("regFecha").value;
-  el.innerHTML = `Se registrará en: <b>${cuentaNombre(sel.regCuenta)}</b> · ${redNombre(sel.regRed)} · ${f === todayKey() ? "hoy" : f}`;
-}
 document.querySelectorAll(".neg-btn").forEach(b => {
   b.onclick = () => {
     const negTextoEl = document.getElementById("negTexto");
-    addEvent("andrea", "neg_" + b.dataset.m, sel.regCuenta, sel.regRed, 1, getRegFecha(), negTextoEl.value.trim());
+    addEvent("andrea", "neg_" + b.dataset.m, sel.negCuenta, sel.negRed, 1, getRegFecha(), negTextoEl.value.trim());
     negTextoEl.value = "";
   };
 });
