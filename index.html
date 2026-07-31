@@ -372,6 +372,10 @@
   }
   .hist-item .h-main { flex: 1; min-width: 0; }
   .hist-item .h-main b { font-weight: 700; }
+  .hist-item .h-quote {
+    margin-top: 3px; font-size: 12px; font-style: italic; color: var(--text-2);
+    overflow-wrap: break-word;
+  }
   .hist-item .h-time { color: var(--muted); font-size: 11.5px; white-space: nowrap; font-variant-numeric: tabular-nums; }
   .hist-item .h-del {
     width: 28px; height: 28px; border: none; border-radius: 8px; background: transparent;
@@ -525,6 +529,12 @@
   /* ---------- Comentarios negativos ---------- */
   .neg-ctx { font-size: 12.5px; color: var(--text-2); margin-bottom: 10px; }
   .neg-ctx b { color: var(--text-1); }
+  .neg-texto {
+    width: 100%; padding: 12px; font-size: 14px; font-family: inherit; resize: vertical;
+    border: 1.5px solid var(--border); border-radius: 12px; background: var(--surface);
+    color: var(--text-1); min-height: 60px; margin-bottom: 10px;
+  }
+  .neg-texto:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
   .neg-row { display: flex; gap: 8px; flex-wrap: wrap; }
   .neg-btn {
     flex: 1; min-width: 130px; padding: 14px 10px; font-size: 14px; font-weight: 700;
@@ -631,8 +641,9 @@
 
     <div class="card">
       <h2>😠 Comentario negativo</h2>
-      <div class="sub">¿Llegó una queja? Un toque y queda registrada — usa la cuenta, red y fecha elegidas arriba.</div>
+      <div class="sub">¿Llegó una queja? Escribe qué dice (opcional) y toca el motivo — usa la cuenta, red y fecha elegidas arriba.</div>
       <div class="neg-ctx" id="negCtx"></div>
+      <textarea class="neg-texto" id="negTexto" maxlength="500" placeholder="Pega o escribe aquí lo que dice el comentario/queja… (opcional)"></textarea>
       <div class="neg-row">
         <button class="neg-btn" data-m="mala">😠 Mala atención <span>+1</span></button>
         <button class="neg-btn" data-m="costos">💰 Costos <span>+1</span></button>
@@ -740,6 +751,8 @@
       <div class="bars" id="barsNegMotivo"></div>
       <div class="field-lbl">Por cuenta</div>
       <div class="bars" id="barsNegCuenta"></div>
+      <div class="field-lbl">Lo que dicen</div>
+      <div class="hist" id="negFeed"></div>
     </div>
 
     <div class="card">
@@ -899,10 +912,10 @@ function tsForDate(key) {
 const FMT_DIA = new Intl.DateTimeFormat("es-MX", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
 
 /* ================= Acciones ================= */
-function addEvent(who, tipo, cuenta, red, cantidad, fechaKey) {
+function addEvent(who, tipo, cuenta, red, cantidad, fechaKey, texto) {
   cantidad = Math.max(1, Math.min(999, Math.round(Number(cantidad) || 0)));
   if (!cantidad) return;
-  const ev = { id: uid(), ts: tsForDate(fechaKey), who, tipo, cuenta: cuenta || "", red: red || "", cantidad };
+  const ev = { id: uid(), ts: tsForDate(fechaKey), who, tipo, cuenta: cuenta || "", red: red || "", cantidad, texto: texto ? String(texto).slice(0, 500) : "" };
   state.events.push(ev);
   save();
   if (sel.syncUrl) { pending.push({ op: "add", ev }); savePending(); scheduleSync(); }
@@ -990,7 +1003,8 @@ async function syncNow() {
       .filter(e => e && e.id && !remDel.has(String(e.id)))
       .map(e => ({ id: String(e.id), ts: Number(e.ts) || 0, who: String(e.who || "andrea"),
                    tipo: String(e.tipo || "mensaje"), cuenta: e.cuenta ? String(e.cuenta) : "",
-                   red: e.red ? String(e.red) : "", cantidad: Number(e.cantidad) || 0 }))
+                   red: e.red ? String(e.red) : "", cantidad: Number(e.cantidad) || 0,
+                   texto: e.texto ? String(e.texto) : "" }))
       .filter(e => e.cantidad > 0);
     const haveIds = new Set(evs.map(e => e.id));
     for (const p of pending) if (p.op === "add" && !haveIds.has(p.ev.id)) evs.push(p.ev);
@@ -1427,6 +1441,7 @@ function renderAll() {
   renderBars("barsNegCuenta",
     CUENTAS.map(c => ({ label: c.nombre, color: cuentaColor(c.id), value: a.negPorCuenta[c.id] })),
     r => `<div class="tp-t">${r.label}</div><div class="tp-r">Quejas<b>${r.value}</b></div>`);
+  renderNegFeed(evs);
 
   renderLine(evs);
   renderTable(a);
@@ -1667,6 +1682,23 @@ function renderTable(a) {
     <td class="num">${tr}</td><td class="num">${tt}</td><td class="num">${tt > 0 ? "100%" : "—"}</td></tr></tbody>`;
 }
 
+/* --- feed de comentarios negativos con texto (periodo) --- */
+function renderNegFeed(evs) {
+  const box = document.getElementById("negFeed");
+  const withText = evs.filter(e => esNeg(e.tipo) && e.texto).sort((a, b) => b.ts - a.ts).slice(0, 30);
+  if (!withText.length) { box.innerHTML = '<div class="empty">Sin comentarios con texto en este periodo</div>'; return; }
+  box.innerHTML = "";
+  for (const ev of withText) {
+    const item = document.createElement("div");
+    item.className = "hist-item";
+    item.innerHTML = `<span class="h-badge" style="background:#d03b3b">${NEG_LBL[ev.tipo.slice(4)] || "otro"}</span>
+      <div class="h-main"><div class="h-quote">"${ev.texto.replace(/</g, "&lt;")}"</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:2px">${cuentaNombre(ev.cuenta)} · ${redNombre(ev.red)}</div></div>
+      <span class="h-time">${FMT_HIST.format(ev.ts)}</span>`;
+    box.appendChild(item);
+  }
+}
+
 /* --- historial --- */
 const FMT_HIST = new Intl.DateTimeFormat("es-MX", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
 function renderHist() {
@@ -1693,6 +1725,7 @@ function renderHist() {
     } else if (esNeg(ev.tipo)) {
       badge = '<span class="h-badge" style="background:#d03b3b">Queja</span>';
       desc = `<b>+${ev.cantidad}</b> negativo(s): ${NEG_LBL[ev.tipo.slice(4)] || "otro"} · ${cuentaNombre(ev.cuenta)} · ${redNombre(ev.red)}`;
+      if (ev.texto) desc += `<div class="h-quote">"${ev.texto.replace(/</g, "&lt;")}"</div>`;
     } else {
       badge = '<span class="h-badge" style="background:var(--s1)">Andrea</span>';
       const tl = ev.tipo === "mensaje" ? "mensaje(s)" : ev.tipo === "resena" ? "reseña(s)" : "comentario(s)";
@@ -1715,7 +1748,7 @@ function download(name, content, type) {
   setTimeout(() => URL.revokeObjectURL(a.href), 3000);
 }
 document.getElementById("expCsv").onclick = () => {
-  let csv = "﻿fecha,hora,quien,cuenta,red,tipo,cantidad\n";
+  let csv = "﻿fecha,hora,quien,cuenta,red,tipo,cantidad,comentario\n";
   for (const ev of state.events.slice().sort((a, b) => a.ts - b.ts)) {
     const d = new Date(ev.ts);
     csv += [dayKey(ev.ts), pad(d.getHours()) + ":" + pad(d.getMinutes()),
@@ -1723,7 +1756,8 @@ document.getElementById("expCsv").onclick = () => {
       '"' + (ev.cuenta ? cuentaNombre(ev.cuenta) : "") + '"',
       ev.red ? redNombre(ev.red) : "",
       esNeg(ev.tipo) ? '"negativo: ' + (NEG_LBL[ev.tipo.slice(4)] || "otro") + '"' : (ev.tipo === "resena" ? "reseña" : ev.tipo),
-      ev.cantidad].join(",") + "\n";
+      ev.cantidad,
+      '"' + (ev.texto ? String(ev.texto).replace(/"/g, '""') : "") + '"'].join(",") + "\n";
   }
   download("responding_" + todayKey() + ".csv", csv, "text/csv;charset=utf-8");
   toast("CSV exportado ⬇️");
@@ -1821,7 +1855,9 @@ function updateNegCtx() {
 }
 document.querySelectorAll(".neg-btn").forEach(b => {
   b.onclick = () => {
-    addEvent("andrea", "neg_" + b.dataset.m, sel.regCuenta, sel.regRed, 1, getRegFecha());
+    const negTextoEl = document.getElementById("negTexto");
+    addEvent("andrea", "neg_" + b.dataset.m, sel.regCuenta, sel.regRed, 1, getRegFecha(), negTextoEl.value.trim());
+    negTextoEl.value = "";
   };
 });
 

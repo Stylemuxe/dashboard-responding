@@ -48,7 +48,7 @@ function handle(d) {
         sh.appendRow([
           String(ev.id), Number(ev.ts), String(ev.who || ""), String(ev.tipo || ""),
           ev.cuenta ? String(ev.cuenta) : "", ev.red ? String(ev.red) : "",
-          Number(ev.cantidad) || 0, new Date(Number(ev.ts))
+          Number(ev.cantidad) || 0, new Date(Number(ev.ts)), ev.texto ? String(ev.texto) : ""
         ]);
         ids[String(ev.id)] = true;
       });
@@ -63,7 +63,7 @@ function handle(d) {
       out.push({
         id: String(r[0]), ts: Number(r[1]), who: String(r[2]), tipo: String(r[3]),
         cuenta: r[4] ? String(r[4]) : "", red: r[5] ? String(r[5]) : "",
-        cantidad: Number(r[6])
+        cantidad: Number(r[6]), texto: r[8] ? String(r[8]) : ""
       });
     }
     return json({ ok: true, events: out });
@@ -77,8 +77,11 @@ function getSheet() {
   var sh = ss.getSheetByName(SHEET_NAME);
   if (!sh) {
     sh = ss.insertSheet(SHEET_NAME);
-    sh.appendRow(["id", "ts", "quien", "tipo", "cuenta", "red", "cantidad", "fecha"]);
+    sh.appendRow(["id", "ts", "quien", "tipo", "cuenta", "red", "cantidad", "fecha", "texto"]);
     sh.setFrozenRows(1);
+  } else if (sh.getLastColumn() < 9) {
+    /* sheet creado antes de agregar la columna "texto": la completamos sin mover nada más */
+    sh.getRange(1, 9).setValue("texto");
   }
   return sh;
 }
