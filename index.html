@@ -774,6 +774,10 @@
     <div class="card">
       <h2>Historial de registros</h2>
       <div class="sub">Los más recientes primero. Puedes borrar cualquier registro con ✕.</div>
+      <div class="date-row" style="margin-bottom:12px">
+        <input type="date" id="histFecha">
+        <button id="histFechaClear" class="chip">Todos</button>
+      </div>
       <div class="hist" id="histList"></div>
       <div class="data-actions">
         <button id="expCsv">⬇️ Exportar CSV</button>
@@ -872,7 +876,7 @@ const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 
 
 /* selección actual (se recuerda) */
 let sel = Object.assign(
-  { regCuenta: "et", regRed: "facebook", regTipo: "mensaje", conTipo: "llegada", range: "hoy", theme: "", syncUrl: "", customFrom: "", customTo: "", negCuenta: "et", negRed: "facebook" },
+  { regCuenta: "et", regRed: "facebook", regTipo: "mensaje", conTipo: "llegada", range: "hoy", theme: "", syncUrl: "", customFrom: "", customTo: "", negCuenta: "et", negRed: "facebook", histFecha: "" },
   JSON.parse(localStorage.getItem(LS_KEY + "_sel") || "{}")
 );
 function saveSel() { localStorage.setItem(LS_KEY + "_sel", JSON.stringify(sel)); }
@@ -1709,8 +1713,15 @@ const FMT_HIST = new Intl.DateTimeFormat("es-MX", { day: "2-digit", month: "shor
 function renderHist() {
   const box = document.getElementById("histList");
   box.innerHTML = "";
-  const evs = state.events.slice().sort((a, b) => b.ts - a.ts).slice(0, 150);
-  if (!evs.length) { box.innerHTML = '<div class="empty">Aún no hay registros. ¡El primero es el que cuenta! 💪</div>'; return; }
+  let evs = state.events.slice().sort((a, b) => b.ts - a.ts);
+  if (sel.histFecha) evs = evs.filter(e => dayKey(e.ts) === sel.histFecha);
+  else evs = evs.slice(0, 150);
+  if (!evs.length) {
+    box.innerHTML = sel.histFecha
+      ? '<div class="empty">Sin registros en ese día</div>'
+      : '<div class="empty">Aún no hay registros. ¡El primero es el que cuenta! 💪</div>';
+    return;
+  }
   for (const ev of evs) {
     const item = document.createElement("div");
     item.className = "hist-item";
@@ -1743,6 +1754,18 @@ function renderHist() {
     box.appendChild(item);
   }
 }
+const histFechaInput = document.getElementById("histFecha");
+histFechaInput.max = todayKey();
+histFechaInput.value = sel.histFecha || "";
+histFechaInput.addEventListener("change", () => {
+  sel.histFecha = histFechaInput.value;
+  saveSel(); renderHist();
+});
+document.getElementById("histFechaClear").onclick = () => {
+  sel.histFecha = "";
+  histFechaInput.value = "";
+  saveSel(); renderHist();
+};
 
 /* ================= Export / import ================= */
 function download(name, content, type) {
