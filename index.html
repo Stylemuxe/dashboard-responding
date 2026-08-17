@@ -1153,12 +1153,20 @@ async function syncNow() {
       adds: sent.filter(p => p.op === "add").map(p => p.ev),
       deletes: sent.filter(p => p.op === "del").map(p => p.id),
     };
-    const res = await fetch(sel.syncUrl, {
-      method: "POST",
-      headers: { "Content-Type": "text/plain;charset=utf-8" },
-      body: JSON.stringify(payload),
-      redirect: "follow",
-    });
+    const ctrl = new AbortController();
+    const killer = setTimeout(() => ctrl.abort(), 20000); /* evita que se quede "Sincronizando…" para siempre si Sheets no responde */
+    let res;
+    try {
+      res = await fetch(sel.syncUrl, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify(payload),
+        redirect: "follow",
+        signal: ctrl.signal,
+      });
+    } finally {
+      clearTimeout(killer);
+    }
     const data = await res.json();
     if (!data || !data.ok || !Array.isArray(data.events)) throw new Error("respuesta inválida");
     /* quitar de la cola solo lo que sí se envió */
