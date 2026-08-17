@@ -22,7 +22,8 @@ function doPost(e) {
 
 function handle(d) {
   var lock = LockService.getScriptLock();
-  lock.tryLock(10000);
+  var gotLock = lock.tryLock(10000);
+  if (!gotLock) return json({ ok: false, error: "ocupado, intenta de nuevo" });
   try {
     var sh = getSheet();
 
