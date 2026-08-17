@@ -1154,7 +1154,7 @@ async function syncNow() {
       deletes: sent.filter(p => p.op === "del").map(p => p.id),
     };
     const ctrl = new AbortController();
-    const killer = setTimeout(() => ctrl.abort(), 20000); /* evita que se quede "Sincronizando…" para siempre si Sheets no responde */
+    const killer = setTimeout(() => ctrl.abort(), 45000); /* evita que se quede "Sincronizando…" para siempre si Sheets no responde; Apps Script puede tardar en "arrancar en frío" tras un rato sin uso */
     let res;
     try {
       res = await fetch(sel.syncUrl, {
