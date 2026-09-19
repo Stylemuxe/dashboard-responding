@@ -4,6 +4,13 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Responding · ETH</title>
+<script>
+  try {
+    if (localStorage.getItem("responding_eth_interfaz") === "gerontologia") {
+      document.documentElement.setAttribute("data-interfaz", "gerontologia");
+    }
+  } catch (e) {}
+</script>
 <style>
   :root {
     color-scheme: light;
@@ -24,6 +31,15 @@
     --accent: #2a78d6;
     --shadow: 0 1px 3px rgba(11,11,11,0.06), 0 4px 16px rgba(11,11,11,0.05);
   }
+  :root[data-interfaz="gerontologia"] {
+    --s1: #7c4dff;  /* Autonomía con Sentido / Facebook / Respondidos */
+    --s2: #f2994a;  /* Instagram / Llegados */
+    --s3: #1fada0;  /* TikTok / Agendados */
+    --s4: #d6a324;  /* YouTube */
+    --s5: #d46bb3;  /* Google */
+    --good: #0a7d5c;
+    --accent: #7c4dff;
+  }
   :root[data-theme="dark"] {
     color-scheme: dark;
     --page:           #0d0d0d;
@@ -42,6 +58,15 @@
     --good: #0ca30c;
     --accent: #3987e5;
     --shadow: 0 1px 3px rgba(0,0,0,0.4);
+  }
+  :root[data-theme="dark"][data-interfaz="gerontologia"] {
+    --s1: #9a7bff;
+    --s2: #ff9d5c;
+    --s3: #35c9bb;
+    --s4: #e8c150;
+    --s5: #e78bcf;
+    --good: #1fae86;
+    --accent: #9a7bff;
   }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
@@ -62,6 +87,15 @@
       --good: #0ca30c;
       --accent: #3987e5;
       --shadow: 0 1px 3px rgba(0,0,0,0.4);
+    }
+    :root:not([data-theme="light"])[data-interfaz="gerontologia"] {
+      --s1: #9a7bff;
+      --s2: #ff9d5c;
+      --s3: #35c9bb;
+      --s4: #e8c150;
+      --s5: #e78bcf;
+      --good: #1fae86;
+      --accent: #9a7bff;
     }
   }
 
@@ -1013,6 +1047,8 @@ const INTERFACES = [
 const INTERFAZ_KEY = "responding_eth_interfaz";
 let interfaz = localStorage.getItem(INTERFAZ_KEY) || "equilibrio";
 if (!INTERFACES.find(i => i.id === interfaz)) interfaz = "equilibrio";
+if (interfaz === "gerontologia") document.documentElement.setAttribute("data-interfaz", "gerontologia");
+else document.documentElement.removeAttribute("data-interfaz");
 
 /* migración única: "Autonomía con Sentido" pasa de vivir mezclada en Equilibrio Total
    a tener su propia interfaz "Gerontología", conservando su historial ya registrado */
