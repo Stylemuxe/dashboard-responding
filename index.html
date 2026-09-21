@@ -170,6 +170,23 @@
   }
   .interfaz-sel:hover { border-color: var(--accent); }
   .interfaz-sel option { background: var(--surface); color: var(--text-1); }
+
+  .serv-row { display: grid; grid-template-columns: 110px 1fr 1fr 1fr; gap: 8px; margin-bottom: 10px; align-items: center; }
+  .serv-lbl { font-weight: 700; font-size: 13.5px; }
+  .serv-row input {
+    padding: 10px; border: 1px solid var(--border); border-radius: 10px;
+    background: var(--surface); color: var(--text-1); font-size: 14px; width: 100%;
+  }
+  @media (max-width: 480px) {
+    .serv-row { grid-template-columns: 1fr 1fr; }
+    .serv-lbl { grid-column: 1 / -1; }
+  }
+  #campTabla { width: 100%; border-collapse: collapse; font-size: 13px; }
+  #campTabla th, #campTabla td { padding: 8px 10px; text-align: left; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  #campTabla tr.paused { opacity: .5; }
+  #campTabla .badge { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; }
+  #campTabla .badge.active { background: color-mix(in srgb, var(--good) 18%, transparent); color: var(--good); }
+  #campTabla .badge.paused { background: var(--grid); color: var(--muted); }
   .sync-pill .sdot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); flex-shrink: 0; }
   .sync-pill.ok .sdot { background: #0ca30c; animation: livePulse 2.2s ease infinite; }
   .sync-pill.pend .sdot { background: #fab219; animation: livePulse 1.2s ease infinite; }
@@ -860,6 +877,43 @@
       <div class="cmp" id="conCompare"></div>
 
       <button class="undo-btn" id="conUndo">↩︎ Deshacer último registro</button>
+    </div>
+
+    <div id="geroExtra" style="display:none">
+      <div class="card">
+        <h2>Servicios</h2>
+        <div class="sub">Números acumulados a la fecha — leads, ingresos y pagos pendientes por servicio.</div>
+        <div class="serv-row" data-serv="consulta">
+          <div class="serv-lbl">🩺 Consulta</div>
+          <input type="number" class="serv-leads" placeholder="Leads" min="0" inputmode="numeric">
+          <input type="number" class="serv-ingresos" placeholder="Ingresos $" min="0" inputmode="numeric">
+          <input type="number" class="serv-pend" placeholder="Sin pago" min="0" inputmode="numeric">
+        </div>
+        <div class="serv-row" data-serv="gym">
+          <div class="serv-lbl">🏋️ Gym</div>
+          <input type="number" class="serv-leads" placeholder="Leads" min="0" inputmode="numeric">
+          <input type="number" class="serv-ingresos" placeholder="Ingresos $" min="0" inputmode="numeric">
+          <input type="number" class="serv-pend" placeholder="Sin pago" min="0" inputmode="numeric">
+        </div>
+        <div class="serv-row" data-serv="baile">
+          <div class="serv-lbl">💃 Baile</div>
+          <input type="number" class="serv-leads" placeholder="Leads" min="0" inputmode="numeric">
+          <input type="number" class="serv-ingresos" placeholder="Ingresos $" min="0" inputmode="numeric">
+          <input type="number" class="serv-pend" placeholder="Sin pago" min="0" inputmode="numeric">
+        </div>
+        <button class="undo-btn" id="servSaveBtn" style="background:var(--accent);color:#fff;border-color:transparent">💾 Guardar servicios</button>
+        <div class="sub" id="servUpdated" style="margin-top:8px"></div>
+        <div class="tbl-scroll" style="margin-top:14px"><table id="servTotales"></table></div>
+      </div>
+
+      <div class="card">
+        <h2>Campañas Meta Ads</h2>
+        <div class="sub" id="campSub">Cuenta Gerontología (act_1487226859227699) — gasto y leads del mes en curso.</div>
+        <div class="tbl-scroll"><table id="campTabla"></table></div>
+        <div class="field-lbl" style="margin-top:14px">Notas</div>
+        <textarea class="neg-texto" id="campNotas" maxlength="500" placeholder="Notas sobre las campañas (opcional)…"></textarea>
+        <button class="undo-btn" id="campNotasBtn" style="margin-top:8px">💾 Guardar notas</button>
+      </div>
     </div>
   </section>
 
@@ -1633,6 +1687,7 @@ function agg(events) {
   CUENTAS.forEach(c => { out.porCuenta[c.id] = { msg: 0, com: 0, res: 0 }; out.negPorCuenta[c.id] = 0; });
   REDES.forEach(r => out.porRed[r.id] = { resp: 0 });
   for (const ev of events) {
+    if (ev.who === "servicios") continue; /* snapshots de Servicios/Campañas, no son respuestas ni leads */
     if (ev.who === "contact") {
       if (ev.tipo === "agendada") out.age += ev.cantidad;
       else if (ev.tipo === "asistida") out.asi += ev.cantidad;
@@ -1732,6 +1787,8 @@ function renderAll() {
   renderLine(evs);
   renderTable(a);
   renderHist();
+  renderServicios();
+  renderCampanas();
 }
 
 /* --- embudo --- */
@@ -1990,7 +2047,7 @@ const FMT_HIST = new Intl.DateTimeFormat("es-MX", { day: "2-digit", month: "shor
 function renderHist() {
   const box = document.getElementById("histList");
   box.innerHTML = "";
-  let evs = state.events.slice().sort((a, b) => b.ts - a.ts);
+  let evs = state.events.filter(e => e.who !== "servicios").sort((a, b) => b.ts - a.ts);
   if (sel.histFecha) evs = evs.filter(e => dayKey(e.ts) === sel.histFecha);
   else evs = evs.slice(0, 150);
   if (!evs.length) {
@@ -2054,7 +2111,7 @@ function download(name, content, type) {
 }
 document.getElementById("expCsv").onclick = () => {
   let csv = "﻿fecha,hora,quien,cuenta,red,tipo,cantidad,comentario\n";
-  for (const ev of state.events.slice().sort((a, b) => a.ts - b.ts)) {
+  for (const ev of state.events.filter(e => e.who !== "servicios").sort((a, b) => a.ts - b.ts)) {
     const d = new Date(ev.ts);
     csv += [dayKey(ev.ts), pad(d.getHours()) + ":" + pad(d.getMinutes()),
       ev.who === "contact" ? "Contact" : "Andrea",
@@ -2158,6 +2215,131 @@ document.querySelectorAll(".neg-btn").forEach(b => {
     addEvent("andrea", "neg_" + b.dataset.m, sel.negCuenta, sel.negRed, 1, getRegFecha(), negTextoEl.value.trim());
     negTextoEl.value = "";
   };
+});
+
+/* ================= Servicios y Campañas (solo interfaz Gerontología) ================= */
+const SERVICIOS = interfaz === "gerontologia" ? [
+  { id: "consulta", nombre: "Consulta", icon: "🩺" },
+  { id: "gym",      nombre: "Gym",      icon: "🏋️" },
+  { id: "baile",    nombre: "Baile",    icon: "💃" },
+] : [];
+
+/* snapshot inicial pasado por Irving (corte 21-sep-2026) — solo se usa si nunca se ha guardado nada */
+const SERVICIOS_SEED = {
+  consulta: { leads: 18, ingresos: 10620, pendientes: 0 },
+  gym:      { leads: 12, ingresos: 2760,  pendientes: 8 },
+  baile:    { leads: 92, ingresos: 4500,  pendientes: 2 },
+};
+
+/* snapshot de campañas Meta Ads de la cuenta Gerontología (act_1487226859227699), verificado vía API — corte 1-21 sep 2026 */
+const CAMPANAS_SEED = {
+  corte: "Corte: 1–21 de septiembre 2026 (mes en curso)",
+  notas: "",
+  campanas: [
+    { nombre: "Gerontologia Consulta/Prueba", estado: "active", gasto: 9438.55, leads: 9 },
+    { nombre: "Gym Autonomía",                estado: "active", gasto: 6921.69, leads: 12 },
+    { nombre: "Gerontología Baile",           estado: "active", gasto: 6191.01, leads: 68 },
+    { nombre: "Publicación: ¿Tu mamá o papá tiene más de 60 años?", estado: "active", gasto: 432.85, leads: 0 },
+    { nombre: "Gerontología Baile (anterior, pausada)", estado: "paused", gasto: 1894.98, leads: 11 },
+    { nombre: "REVISAR LA ESTRUCTURA DE CAMPAÑA",        estado: "paused", gasto: 0, leads: 0 },
+    { nombre: "Promoción de video (13/jun)",             estado: "paused", gasto: 0, leads: 0 },
+    { nombre: "New Engagement Campaign",                 estado: "paused", gasto: 0, leads: 0 },
+    { nombre: "Gerontologia Febrero - Copia",             estado: "paused", gasto: 0, leads: 0 },
+    { nombre: "Gerontologia Febrero",                     estado: "paused", gasto: 0, leads: 0 },
+    { nombre: "Publicación: ¡Taller GRATUITO para adultos mayores!", estado: "paused", gasto: 0, leads: 0 },
+    { nombre: "Publicación: Una caída cambia la vida...",  estado: "paused", gasto: 0, leads: 0 },
+    { nombre: "Gerontologia",                              estado: "paused", gasto: 0, leads: 0 },
+    { nombre: "Publicación: Si tu papá o mamá repite historias...", estado: "paused", gasto: 0, leads: 0 },
+    { nombre: "Consultas",                                 estado: "paused", gasto: 0, leads: 0 },
+  ],
+};
+
+function ultimoEvento(tipo) {
+  let last = null;
+  for (const e of state.events) if (e.tipo === tipo && (!last || e.ts > last.ts)) last = e;
+  return last;
+}
+function guardarSnapshot(tipo, cantidad, payload) {
+  const ev = { id: uid(), ts: Date.now(), who: "servicios", tipo, cuenta: CUENTAS[0].id, red: "", cantidad, texto: JSON.stringify(payload) };
+  state.events.push(ev);
+  save();
+  if (sel.syncUrl) { pending.push({ op: "add", ev }); savePending(); scheduleSync(); }
+}
+
+function renderServicios() {
+  const card = document.getElementById("geroExtra");
+  if (!card) return;
+  if (!SERVICIOS.length) { card.style.display = "none"; return; }
+  card.style.display = "";
+
+  const ev = ultimoEvento("srv_servicios");
+  const datos = ev ? JSON.parse(ev.texto || "{}") : SERVICIOS_SEED;
+  document.querySelectorAll(".serv-row").forEach(row => {
+    const id = row.dataset.serv;
+    const d = datos[id] || { leads: 0, ingresos: 0, pendientes: 0 };
+    row.querySelector(".serv-leads").value = d.leads || "";
+    row.querySelector(".serv-ingresos").value = d.ingresos || "";
+    row.querySelector(".serv-pend").value = d.pendientes || "";
+  });
+  document.getElementById("servUpdated").textContent = ev
+    ? "Última actualización: " + new Date(ev.ts).toLocaleString("es-MX")
+    : "Última actualización: 21/09/2026 (dato inicial de Irving)";
+
+  const t = document.getElementById("servTotales");
+  let totLeads = 0, totIngresos = 0, totPend = 0;
+  let html = "<tr><th>Servicio</th><th>Leads</th><th>Ingresos</th><th>Sin pago</th></tr>";
+  SERVICIOS.forEach(s => {
+    const d = datos[s.id] || { leads: 0, ingresos: 0, pendientes: 0 };
+    totLeads += d.leads || 0; totIngresos += d.ingresos || 0; totPend += d.pendientes || 0;
+    html += `<tr><td>${s.icon} ${s.nombre}</td><td>${d.leads || 0}</td><td>$${(d.ingresos || 0).toLocaleString("es-MX")}</td><td>${d.pendientes || 0}</td></tr>`;
+  });
+  html += `<tr style="font-weight:700"><td>Total</td><td>${totLeads}</td><td>$${totIngresos.toLocaleString("es-MX")}</td><td>${totPend}</td></tr>`;
+  t.innerHTML = html;
+}
+document.getElementById("servSaveBtn")?.addEventListener("click", () => {
+  const datos = {};
+  document.querySelectorAll(".serv-row").forEach(row => {
+    const id = row.dataset.serv;
+    datos[id] = {
+      leads: Math.max(0, Math.round(Number(row.querySelector(".serv-leads").value) || 0)),
+      ingresos: Math.max(0, Number(row.querySelector(".serv-ingresos").value) || 0),
+      pendientes: Math.max(0, Math.round(Number(row.querySelector(".serv-pend").value) || 0)),
+    };
+  });
+  guardarSnapshot("srv_servicios", SERVICIOS.length, datos);
+  renderServicios();
+  toast("💾 Servicios de Gerontología actualizados");
+});
+
+function renderCampanas() {
+  if (!SERVICIOS.length) return;
+  const ev = ultimoEvento("srv_campanas");
+  const datos = ev ? JSON.parse(ev.texto || "{}") : CAMPANAS_SEED;
+  document.getElementById("campSub").textContent =
+    "Cuenta Gerontología (act_1487226859227699) — " + (datos.corte || CAMPANAS_SEED.corte);
+  document.getElementById("campNotas").value = datos.notas || "";
+
+  const t = document.getElementById("campTabla");
+  let html = "<tr><th>Campaña</th><th>Estado</th><th>Gasto</th><th>Leads</th><th>CPL</th></tr>";
+  (datos.campanas || []).forEach(c => {
+    const cpl = c.leads > 0 ? "$" + (c.gasto / c.leads).toFixed(2) : "—";
+    const badge = c.estado === "active"
+      ? '<span class="badge active">Activa</span>'
+      : '<span class="badge paused">Pausada</span>';
+    html += `<tr class="${c.estado === "paused" ? "paused" : ""}">
+      <td>${c.nombre}</td><td>${badge}</td>
+      <td>$${(c.gasto || 0).toLocaleString("es-MX", { minimumFractionDigits: 2 })}</td>
+      <td>${c.leads || 0}</td><td>${cpl}</td></tr>`;
+  });
+  t.innerHTML = html;
+}
+document.getElementById("campNotasBtn")?.addEventListener("click", () => {
+  const ev = ultimoEvento("srv_campanas");
+  const datos = ev ? JSON.parse(ev.texto || "{}") : JSON.parse(JSON.stringify(CAMPANAS_SEED));
+  datos.notas = document.getElementById("campNotas").value.trim();
+  guardarSnapshot("srv_campanas", (datos.campanas || []).length, datos);
+  renderCampanas();
+  toast("💾 Notas de campañas guardadas");
 });
 
 /* re-render al cambiar tamaño (gráfica de línea responsiva) */
