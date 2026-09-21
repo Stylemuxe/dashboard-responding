@@ -171,22 +171,14 @@
   .interfaz-sel:hover { border-color: var(--accent); }
   .interfaz-sel option { background: var(--surface); color: var(--text-1); }
 
-  .serv-row { display: grid; grid-template-columns: 110px 1fr 1fr 1fr; gap: 8px; margin-bottom: 10px; align-items: center; }
-  .serv-lbl { font-weight: 700; font-size: 13.5px; }
-  .serv-row input {
-    padding: 10px; border: 1px solid var(--border); border-radius: 10px;
-    background: var(--surface); color: var(--text-1); font-size: 14px; width: 100%;
+  .edit-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .edit-table th, .edit-table td { padding: 8px 10px; text-align: left; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  .edit-table th { color: var(--text-2); font-size: 11.5px; text-transform: uppercase; letter-spacing: .02em; }
+  .edit-table input {
+    width: 80px; padding: 7px 8px; border: 1px solid var(--border); border-radius: 8px;
+    background: var(--surface); color: var(--text-1); font-size: 13px;
   }
-  @media (max-width: 480px) {
-    .serv-row { grid-template-columns: 1fr 1fr; }
-    .serv-lbl { grid-column: 1 / -1; }
-  }
-  #campTabla { width: 100%; border-collapse: collapse; font-size: 13px; }
-  #campTabla th, #campTabla td { padding: 8px 10px; text-align: left; border-bottom: 1px solid var(--border); white-space: nowrap; }
-  #campTabla tr.paused { opacity: .5; }
-  #campTabla .badge { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; }
-  #campTabla .badge.active { background: color-mix(in srgb, var(--good) 18%, transparent); color: var(--good); }
-  #campTabla .badge.paused { background: var(--grid); color: var(--muted); }
+  .edit-table td.computed { color: var(--text-2); font-weight: 600; }
   .sync-pill .sdot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); flex-shrink: 0; }
   .sync-pill.ok .sdot { background: #0ca30c; animation: livePulse 2.2s ease infinite; }
   .sync-pill.pend .sdot { background: #fab219; animation: livePulse 1.2s ease infinite; }
@@ -881,38 +873,13 @@
 
     <div id="geroExtra" style="display:none">
       <div class="card">
-        <h2>Servicios</h2>
-        <div class="sub">Números acumulados a la fecha — leads, ingresos y pagos pendientes por servicio.</div>
-        <div class="serv-row" data-serv="consulta">
-          <div class="serv-lbl">🩺 Consulta</div>
-          <input type="number" class="serv-leads" placeholder="Leads" min="0" inputmode="numeric">
-          <input type="number" class="serv-ingresos" placeholder="Ingresos $" min="0" inputmode="numeric">
-          <input type="number" class="serv-pend" placeholder="Sin pago" min="0" inputmode="numeric">
-        </div>
-        <div class="serv-row" data-serv="gym">
-          <div class="serv-lbl">🏋️ Gym</div>
-          <input type="number" class="serv-leads" placeholder="Leads" min="0" inputmode="numeric">
-          <input type="number" class="serv-ingresos" placeholder="Ingresos $" min="0" inputmode="numeric">
-          <input type="number" class="serv-pend" placeholder="Sin pago" min="0" inputmode="numeric">
-        </div>
-        <div class="serv-row" data-serv="baile">
-          <div class="serv-lbl">💃 Baile</div>
-          <input type="number" class="serv-leads" placeholder="Leads" min="0" inputmode="numeric">
-          <input type="number" class="serv-ingresos" placeholder="Ingresos $" min="0" inputmode="numeric">
-          <input type="number" class="serv-pend" placeholder="Sin pago" min="0" inputmode="numeric">
-        </div>
-        <button class="undo-btn" id="servSaveBtn" style="background:var(--accent);color:#fff;border-color:transparent">💾 Guardar servicios</button>
-        <div class="sub" id="servUpdated" style="margin-top:8px"></div>
-        <div class="tbl-scroll" style="margin-top:14px"><table id="servTotales"></table></div>
-      </div>
-
-      <div class="card">
-        <h2>Campañas Meta Ads</h2>
-        <div class="sub" id="campSub">Cuenta Gerontología (act_1487226859227699) — gasto y leads del mes en curso.</div>
-        <div class="tbl-scroll"><table id="campTabla"></table></div>
+        <h2>Programas de Gerontología</h2>
+        <div class="sub" id="progSub">Canal aparte (cuenta Meta Ads act_1487226859227699) — no se compara 1:1 con sedes/franquicias.</div>
+        <div class="tbl-scroll"><table id="progTabla" class="edit-table"></table></div>
+        <button class="undo-btn" id="progSaveBtn" style="background:var(--accent);color:#fff;border-color:transparent;margin-top:14px">💾 Guardar programas</button>
+        <div class="sub" id="progUpdated" style="margin-top:8px"></div>
         <div class="field-lbl" style="margin-top:14px">Notas</div>
-        <textarea class="neg-texto" id="campNotas" maxlength="500" placeholder="Notas sobre las campañas (opcional)…"></textarea>
-        <button class="undo-btn" id="campNotasBtn" style="margin-top:8px">💾 Guardar notas</button>
+        <textarea class="neg-texto" id="progNotas" maxlength="500" placeholder="Notas sobre los programas (opcional)…"></textarea>
       </div>
     </div>
   </section>
@@ -1787,8 +1754,7 @@ function renderAll() {
   renderLine(evs);
   renderTable(a);
   renderHist();
-  renderServicios();
-  renderCampanas();
+  renderProgramas();
 }
 
 /* --- embudo --- */
@@ -2217,41 +2183,21 @@ document.querySelectorAll(".neg-btn").forEach(b => {
   };
 });
 
-/* ================= Servicios y Campañas (solo interfaz Gerontología) ================= */
-const SERVICIOS = interfaz === "gerontologia" ? [
-  { id: "consulta", nombre: "Consulta", icon: "🩺" },
-  { id: "gym",      nombre: "Gym",      icon: "🏋️" },
-  { id: "baile",    nombre: "Baile",    icon: "💃" },
+/* ================= Programas de Gerontología (solo interfaz Gerontología) ================= */
+const PROGRAMAS = interfaz === "gerontologia" ? [
+  { id: "consulta", nombre: "Consulta Gerontología" },
+  { id: "gym",      nombre: "Gym Autonomía" },
+  { id: "baile",    nombre: "Taller Baile" },
+  { id: "otros",    nombre: "Otros Gerontología" },
 ] : [];
 
-/* snapshot inicial pasado por Irving (corte 21-sep-2026) — solo se usa si nunca se ha guardado nada */
-const SERVICIOS_SEED = {
-  consulta: { leads: 18, ingresos: 10620, pendientes: 0 },
-  gym:      { leads: 12, ingresos: 2760,  pendientes: 8 },
-  baile:    { leads: 92, ingresos: 4500,  pendientes: 2 },
-};
-
-/* snapshot de campañas Meta Ads de la cuenta Gerontología (act_1487226859227699), verificado vía API — corte 1-21 sep 2026 */
-const CAMPANAS_SEED = {
-  corte: "Corte: 1–21 de septiembre 2026 (mes en curso)",
+/* corte 21-sep-2026, corregido por Irving (el dashboard automático subcontaba asistidos) */
+const PROGRAMAS_SEED = {
+  consulta: { gasto: 9438, leads: 320,  agendadas: 26,  asistieron: 18, ingresos: 10620, pendientes: 0 },
+  gym:      { gasto: 6921, leads: 821,  agendadas: 13,  asistieron: 12, ingresos: 2760,  pendientes: 8 },
+  baile:    { gasto: 8085, leads: 1168, agendadas: 279, asistieron: 92, ingresos: 4500,  pendientes: 2 },
+  otros:    { gasto: 433,  leads: 14,   agendadas: 49,  asistieron: 37, ingresos: 0,     pendientes: 0 },
   notas: "",
-  campanas: [
-    { nombre: "Gerontologia Consulta/Prueba", estado: "active", gasto: 9438.55, leads: 9 },
-    { nombre: "Gym Autonomía",                estado: "active", gasto: 6921.69, leads: 12 },
-    { nombre: "Gerontología Baile",           estado: "active", gasto: 6191.01, leads: 68 },
-    { nombre: "Publicación: ¿Tu mamá o papá tiene más de 60 años?", estado: "active", gasto: 432.85, leads: 0 },
-    { nombre: "Gerontología Baile (anterior, pausada)", estado: "paused", gasto: 1894.98, leads: 11 },
-    { nombre: "REVISAR LA ESTRUCTURA DE CAMPAÑA",        estado: "paused", gasto: 0, leads: 0 },
-    { nombre: "Promoción de video (13/jun)",             estado: "paused", gasto: 0, leads: 0 },
-    { nombre: "New Engagement Campaign",                 estado: "paused", gasto: 0, leads: 0 },
-    { nombre: "Gerontologia Febrero - Copia",             estado: "paused", gasto: 0, leads: 0 },
-    { nombre: "Gerontologia Febrero",                     estado: "paused", gasto: 0, leads: 0 },
-    { nombre: "Publicación: ¡Taller GRATUITO para adultos mayores!", estado: "paused", gasto: 0, leads: 0 },
-    { nombre: "Publicación: Una caída cambia la vida...",  estado: "paused", gasto: 0, leads: 0 },
-    { nombre: "Gerontologia",                              estado: "paused", gasto: 0, leads: 0 },
-    { nombre: "Publicación: Si tu papá o mamá repite historias...", estado: "paused", gasto: 0, leads: 0 },
-    { nombre: "Consultas",                                 estado: "paused", gasto: 0, leads: 0 },
-  ],
 };
 
 function ultimoEvento(tipo) {
@@ -2266,80 +2212,65 @@ function guardarSnapshot(tipo, cantidad, payload) {
   if (sel.syncUrl) { pending.push({ op: "add", ev }); savePending(); scheduleSync(); }
 }
 
-function renderServicios() {
-  const card = document.getElementById("geroExtra");
-  if (!card) return;
-  if (!SERVICIOS.length) { card.style.display = "none"; return; }
-  card.style.display = "";
+function renderProgramas() {
+  const wrap = document.getElementById("geroExtra");
+  if (!wrap) return;
+  if (!PROGRAMAS.length) { wrap.style.display = "none"; return; }
+  wrap.style.display = "";
 
-  const ev = ultimoEvento("srv_servicios");
-  const datos = ev ? JSON.parse(ev.texto || "{}") : SERVICIOS_SEED;
-  document.querySelectorAll(".serv-row").forEach(row => {
-    const id = row.dataset.serv;
-    const d = datos[id] || { leads: 0, ingresos: 0, pendientes: 0 };
-    row.querySelector(".serv-leads").value = d.leads || "";
-    row.querySelector(".serv-ingresos").value = d.ingresos || "";
-    row.querySelector(".serv-pend").value = d.pendientes || "";
-  });
-  document.getElementById("servUpdated").textContent = ev
-    ? "Última actualización: " + new Date(ev.ts).toLocaleString("es-MX")
-    : "Última actualización: 21/09/2026 (dato inicial de Irving)";
+  const ev = ultimoEvento("srv_programas");
+  const datos = ev ? JSON.parse(ev.texto || "{}") : PROGRAMAS_SEED;
+  document.getElementById("progNotas").value = datos.notas || "";
 
-  const t = document.getElementById("servTotales");
-  let totLeads = 0, totIngresos = 0, totPend = 0;
-  let html = "<tr><th>Servicio</th><th>Leads</th><th>Ingresos</th><th>Sin pago</th></tr>";
-  SERVICIOS.forEach(s => {
-    const d = datos[s.id] || { leads: 0, ingresos: 0, pendientes: 0 };
-    totLeads += d.leads || 0; totIngresos += d.ingresos || 0; totPend += d.pendientes || 0;
-    html += `<tr><td>${s.icon} ${s.nombre}</td><td>${d.leads || 0}</td><td>$${(d.ingresos || 0).toLocaleString("es-MX")}</td><td>${d.pendientes || 0}</td></tr>`;
+  const t = document.getElementById("progTabla");
+  let html = "<tr><th>Programa</th><th>Gasto</th><th>Leads</th><th>CPL</th><th>Agendadas</th><th>Asistieron</th><th>% Asist.</th><th>Ingresos</th><th>Sin pago</th></tr>";
+  let totG = 0, totL = 0, totAg = 0, totAs = 0, totIn = 0, totP = 0;
+  PROGRAMAS.forEach(p => {
+    const d = datos[p.id] || { gasto: 0, leads: 0, agendadas: 0, asistieron: 0, ingresos: 0, pendientes: 0 };
+    totG += d.gasto || 0; totL += d.leads || 0; totAg += d.agendadas || 0;
+    totAs += d.asistieron || 0; totIn += d.ingresos || 0; totP += d.pendientes || 0;
+    const cpl = d.leads > 0 ? "$" + (d.gasto / d.leads).toFixed(2) : "—";
+    const pctAs = d.agendadas > 0 ? Math.round(d.asistieron / d.agendadas * 100) + "%" : "—";
+    html += `<tr data-prog="${p.id}">
+      <td>${p.nombre}</td>
+      <td><input type="number" class="prog-gasto" min="0" value="${d.gasto || 0}"></td>
+      <td><input type="number" class="prog-leads" min="0" value="${d.leads || 0}"></td>
+      <td class="computed prog-cpl">${cpl}</td>
+      <td><input type="number" class="prog-agendadas" min="0" value="${d.agendadas || 0}"></td>
+      <td><input type="number" class="prog-asistieron" min="0" value="${d.asistieron || 0}"></td>
+      <td class="computed prog-pct">${pctAs}</td>
+      <td><input type="number" class="prog-ingresos" min="0" value="${d.ingresos || 0}"></td>
+      <td><input type="number" class="prog-pendientes" min="0" value="${d.pendientes || 0}"></td>
+    </tr>`;
   });
-  html += `<tr style="font-weight:700"><td>Total</td><td>${totLeads}</td><td>$${totIngresos.toLocaleString("es-MX")}</td><td>${totPend}</td></tr>`;
+  const cplTot = totL > 0 ? "$" + (totG / totL).toFixed(2) : "—";
+  const pctTot = totAg > 0 ? Math.round(totAs / totAg * 100) + "%" : "—";
+  html += `<tr style="font-weight:700">
+    <td>Total</td><td>$${totG.toLocaleString("es-MX")}</td><td>${totL}</td><td>${cplTot}</td>
+    <td>${totAg}</td><td>${totAs}</td><td>${pctTot}</td>
+    <td>$${totIn.toLocaleString("es-MX")}</td><td>${totP}</td></tr>`;
   t.innerHTML = html;
+
+  document.getElementById("progUpdated").textContent = ev
+    ? "Última actualización: " + new Date(ev.ts).toLocaleString("es-MX")
+    : "Última actualización: 21/09/2026 (corte corregido por Irving — el dashboard automático subcontaba asistidos)";
 }
-document.getElementById("servSaveBtn")?.addEventListener("click", () => {
-  const datos = {};
-  document.querySelectorAll(".serv-row").forEach(row => {
-    const id = row.dataset.serv;
+document.getElementById("progSaveBtn")?.addEventListener("click", () => {
+  const datos = { notas: document.getElementById("progNotas").value.trim() };
+  document.querySelectorAll("#progTabla tr[data-prog]").forEach(row => {
+    const id = row.dataset.prog;
     datos[id] = {
-      leads: Math.max(0, Math.round(Number(row.querySelector(".serv-leads").value) || 0)),
-      ingresos: Math.max(0, Number(row.querySelector(".serv-ingresos").value) || 0),
-      pendientes: Math.max(0, Math.round(Number(row.querySelector(".serv-pend").value) || 0)),
+      gasto: Math.max(0, Number(row.querySelector(".prog-gasto").value) || 0),
+      leads: Math.max(0, Math.round(Number(row.querySelector(".prog-leads").value) || 0)),
+      agendadas: Math.max(0, Math.round(Number(row.querySelector(".prog-agendadas").value) || 0)),
+      asistieron: Math.max(0, Math.round(Number(row.querySelector(".prog-asistieron").value) || 0)),
+      ingresos: Math.max(0, Number(row.querySelector(".prog-ingresos").value) || 0),
+      pendientes: Math.max(0, Math.round(Number(row.querySelector(".prog-pendientes").value) || 0)),
     };
   });
-  guardarSnapshot("srv_servicios", SERVICIOS.length, datos);
-  renderServicios();
-  toast("💾 Servicios de Gerontología actualizados");
-});
-
-function renderCampanas() {
-  if (!SERVICIOS.length) return;
-  const ev = ultimoEvento("srv_campanas");
-  const datos = ev ? JSON.parse(ev.texto || "{}") : CAMPANAS_SEED;
-  document.getElementById("campSub").textContent =
-    "Cuenta Gerontología (act_1487226859227699) — " + (datos.corte || CAMPANAS_SEED.corte);
-  document.getElementById("campNotas").value = datos.notas || "";
-
-  const t = document.getElementById("campTabla");
-  let html = "<tr><th>Campaña</th><th>Estado</th><th>Gasto</th><th>Leads</th><th>CPL</th></tr>";
-  (datos.campanas || []).forEach(c => {
-    const cpl = c.leads > 0 ? "$" + (c.gasto / c.leads).toFixed(2) : "—";
-    const badge = c.estado === "active"
-      ? '<span class="badge active">Activa</span>'
-      : '<span class="badge paused">Pausada</span>';
-    html += `<tr class="${c.estado === "paused" ? "paused" : ""}">
-      <td>${c.nombre}</td><td>${badge}</td>
-      <td>$${(c.gasto || 0).toLocaleString("es-MX", { minimumFractionDigits: 2 })}</td>
-      <td>${c.leads || 0}</td><td>${cpl}</td></tr>`;
-  });
-  t.innerHTML = html;
-}
-document.getElementById("campNotasBtn")?.addEventListener("click", () => {
-  const ev = ultimoEvento("srv_campanas");
-  const datos = ev ? JSON.parse(ev.texto || "{}") : JSON.parse(JSON.stringify(CAMPANAS_SEED));
-  datos.notas = document.getElementById("campNotas").value.trim();
-  guardarSnapshot("srv_campanas", (datos.campanas || []).length, datos);
-  renderCampanas();
-  toast("💾 Notas de campañas guardadas");
+  guardarSnapshot("srv_programas", PROGRAMAS.length, datos);
+  renderProgramas();
+  toast("💾 Programas de Gerontología actualizados");
 });
 
 /* re-render al cambiar tamaño (gráfica de línea responsiva) */
