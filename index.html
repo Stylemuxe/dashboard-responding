@@ -1162,6 +1162,24 @@ let pending = [];
 try { pending = JSON.parse(localStorage.getItem(LS_KEY + "_pending") || "[]"); } catch (e) {}
 function savePending() { localStorage.setItem(LS_KEY + "_pending", JSON.stringify(pending)); }
 
+/* una sola URL de Apps Script para todas las interfaces: cada una escribe en su propia
+   pestaña del Sheet ("registros", "registros_gerontologia") */
+const SYNC_SHARED_KEY = "responding_eth_sync_url";
+const HOJA = interfaz === "gerontologia" ? "registros_gerontologia" : "registros";
+(function adoptarUrlCompartida() {
+  let shared = localStorage.getItem(SYNC_SHARED_KEY) || "";
+  if (sel.syncUrl && !shared) { localStorage.setItem(SYNC_SHARED_KEY, sel.syncUrl); return; }
+  /* dispositivos que ya conectaron Equilibrio antes de existir la URL compartida */
+  if (!shared) { try { shared = JSON.parse(localStorage.getItem("responding_eth_v1_sel") || "{}").syncUrl || ""; } catch (e) {} }
+  if (!sel.syncUrl && shared && !sel.syncOff) {
+    sel.syncUrl = shared; sel.hojaOk = false; saveSel();
+    /* primera conexión de esta interfaz: subir todo lo local para no perder nada */
+    const queued = new Set(pending.filter(p => p.op === "add").map(p => p.ev.id));
+    for (const ev of state.events) if (!queued.has(ev.id)) pending.push({ op: "add", ev });
+    savePending();
+  }
+})();
+
 /* ================= Fecha helpers ================= */
 const pad = n => String(n).padStart(2, "0");
 function dayKey(ts) { const d = new Date(ts); return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()); }
@@ -1258,34 +1276,44 @@ function deleteEvent(id) {
 }
 
 /* ================= Sincronización con Google Sheets ================= */
-let syncing = false, lastSyncAt = null, syncTimer = null, syncError = false;
+let syncing = false, lastSyncAt = null, syncTimer = null, syncError = false, scriptViejo = false;
 
 function scheduleSync() { clearTimeout(syncTimer); syncTimer = setTimeout(syncNow, 1200); updateSyncPill(); }
+
+async function postSync(payload) {
+  const ctrl = new AbortController();
+  const killer = setTimeout(() => ctrl.abort(), 45000); /* evita que se quede "Sincronizando…" para siempre si Sheets no responde; Apps Script puede tardar en "arrancar en frío" tras un rato sin uso */
+  try {
+    const res = await fetch(sel.syncUrl, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify(Object.assign({ interfaz }, payload)),
+      redirect: "follow",
+      signal: ctrl.signal,
+    });
+    return await res.json();
+  } finally {
+    clearTimeout(killer);
+  }
+}
 
 async function syncNow() {
   if (!sel.syncUrl || syncing) return;
   syncing = true; updateSyncPill();
   const sent = pending.slice();
   try {
-    const payload = {
+    /* un Apps Script viejo ignora la interfaz y escribe todo en "registros": antes de mandar
+       datos que no son de Equilibrio, confirmar que el script ya separa por pestaña */
+    if (interfaz !== "equilibrio" && !sel.hojaOk) {
+      const probe = await postSync({ adds: [], deletes: [] });
+      if (!probe || !probe.ok || probe.hoja !== HOJA) { scriptViejo = true; throw new Error("apps script sin pestañas por interfaz"); }
+      sel.hojaOk = true; saveSel();
+    }
+    scriptViejo = false;
+    const data = await postSync({
       adds: sent.filter(p => p.op === "add").map(p => p.ev),
       deletes: sent.filter(p => p.op === "del").map(p => p.id),
-    };
-    const ctrl = new AbortController();
-    const killer = setTimeout(() => ctrl.abort(), 45000); /* evita que se quede "Sincronizando…" para siempre si Sheets no responde; Apps Script puede tardar en "arrancar en frío" tras un rato sin uso */
-    let res;
-    try {
-      res = await fetch(sel.syncUrl, {
-        method: "POST",
-        headers: { "Content-Type": "text/plain;charset=utf-8" },
-        body: JSON.stringify(payload),
-        redirect: "follow",
-        signal: ctrl.signal,
-      });
-    } finally {
-      clearTimeout(killer);
-    }
-    const data = await res.json();
+    });
     if (!data || !data.ok || !Array.isArray(data.events)) throw new Error("respuesta inválida");
     /* quitar de la cola solo lo que sí se envió */
     pending = pending.filter(p => sent.indexOf(p) === -1);
@@ -1319,6 +1347,7 @@ function updateSyncPill() {
   pill.classList.remove("ok", "pend", "err");
   if (!sel.syncUrl) { txt.textContent = "Solo local"; return; }
   if (syncing) { pill.classList.add("pend"); txt.textContent = "Sincronizando…"; return; }
+  if (scriptViejo) { pill.classList.add("err"); txt.textContent = "Actualiza Apps Script"; return; }
   if (pending.length) { pill.classList.add("pend"); txt.textContent = pending.length + " por enviar"; return; }
   if (syncError) { pill.classList.add("err"); txt.textContent = "Sin conexión"; return; }
   pill.classList.add("ok");
@@ -1343,7 +1372,10 @@ document.getElementById("cfgSave").onclick = async () => {
     return;
   }
   const isNew = url !== sel.syncUrl;
-  sel.syncUrl = url; saveSel();
+  sel.syncUrl = url; sel.syncOff = false;
+  if (isNew) sel.hojaOk = false;
+  saveSel();
+  localStorage.setItem(SYNC_SHARED_KEY, url);
   if (isNew) {
     /* primera vez: subir todo lo local para no perder nada */
     const queued = new Set(pending.filter(p => p.op === "add").map(p => p.ev.id));
@@ -1352,19 +1384,21 @@ document.getElementById("cfgSave").onclick = async () => {
   }
   cfgStatus.textContent = "Sincronizando…"; cfgStatus.style.color = "var(--text-2)";
   await syncNow();
-  cfgStatus.textContent = syncError ? "❌ No se pudo conectar. Revisa la URL y que la app esté implementada para 'Cualquier persona'." : "✅ ¡Conectado! Los datos ya están en el Sheet.";
+  cfgStatus.textContent = scriptViejo ? "⚠️ El Apps Script es de una versión anterior: pega el apps_script.gs nuevo e impleméntalo como nueva versión."
+                        : syncError ? "❌ No se pudo conectar. Revisa la URL y que la app esté implementada para 'Cualquier persona'." : "✅ ¡Conectado! Los datos ya están en el Sheet.";
   cfgStatus.style.color = syncError ? "#d03b3b" : "var(--good)";
 };
 document.getElementById("cfgTest").onclick = async () => {
   if (!sel.syncUrl) { cfgStatus.textContent = "Primero guarda una URL"; cfgStatus.style.color = "#d03b3b"; return; }
   cfgStatus.textContent = "Sincronizando…"; cfgStatus.style.color = "var(--text-2)";
   await syncNow();
-  cfgStatus.textContent = syncError ? "❌ Sin conexión con el Sheet" : "✅ Sincronizado correctamente";
+  cfgStatus.textContent = scriptViejo ? "⚠️ El Apps Script es de una versión anterior: pega el apps_script.gs nuevo e impleméntalo como nueva versión."
+                        : syncError ? "❌ Sin conexión con el Sheet" : "✅ Sincronizado correctamente";
   cfgStatus.style.color = syncError ? "#d03b3b" : "var(--good)";
 };
 document.getElementById("cfgRemove").onclick = () => {
   if (confirm("¿Quitar la sincronización? Los datos locales se conservan.")) {
-    sel.syncUrl = ""; saveSel(); pending = []; savePending();
+    sel.syncUrl = ""; sel.syncOff = true; saveSel(); pending = []; savePending();
     updateSyncPill();
     cfgStatus.textContent = "Sincronización desactivada";
     cfgStatus.style.color = "var(--text-2)";

@@ -8,11 +8,23 @@
  * 4. Tipo: "Aplicación web" · Ejecutar como: "Yo" · Acceso: "Cualquier persona"
  * 5. Implementar → autorizar permisos → copiar la URL que termina en /exec
  * 6. Pegar esa URL en el dashboard (botón de sincronización, arriba a la derecha)
+ *
+ * ACTUALIZAR (si ya estaba implementado): pega el código nuevo, guarda y ve a
+ * Implementar → Gestionar implementaciones → ✏️ → Versión: "Nueva versión" → Implementar.
+ * Así la URL /exec no cambia.
  */
 
-var SHEET_NAME = "registros";
+/* cada interfaz del dashboard escribe en su propia pestaña del mismo Sheet */
+var SHEET_BY_INTERFAZ = {
+  equilibrio:   "registros",
+  gerontologia: "registros_gerontologia"
+};
 
-function doGet() { return handle({}); }
+function sheetNameFor(interfaz) {
+  return SHEET_BY_INTERFAZ[interfaz] || SHEET_BY_INTERFAZ.equilibrio;
+}
+
+function doGet(e) { return handle({ interfaz: e && e.parameter ? e.parameter.interfaz : "" }); }
 
 function doPost(e) {
   var d = {};
@@ -25,7 +37,8 @@ function handle(d) {
   var gotLock = lock.tryLock(10000);
   if (!gotLock) return json({ ok: false, error: "ocupado, intenta de nuevo" });
   try {
-    var sh = getSheet();
+    var hoja = sheetNameFor(d.interfaz);
+    var sh = getSheet(hoja);
 
     // 1) borrar registros
     var dels = (d.deletes || []).map(String);
@@ -67,17 +80,17 @@ function handle(d) {
         cantidad: Number(r[6]), texto: r[8] ? String(r[8]) : ""
       });
     }
-    return json({ ok: true, events: out });
+    return json({ ok: true, hoja: hoja, events: out });
   } finally {
     lock.releaseLock();
   }
 }
 
-function getSheet() {
+function getSheet(name) {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var sh = ss.getSheetByName(SHEET_NAME);
+  var sh = ss.getSheetByName(name);
   if (!sh) {
-    sh = ss.insertSheet(SHEET_NAME);
+    sh = ss.insertSheet(name);
     sh.appendRow(["id", "ts", "quien", "tipo", "cuenta", "red", "cantidad", "fecha", "texto"]);
     sh.setFrozenRows(1);
   } else if (sh.getLastColumn() < 9) {

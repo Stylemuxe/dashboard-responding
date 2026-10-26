@@ -23,6 +23,18 @@ con esa URL ven los mismos datos (se actualiza cada minuto y al volver a la pest
 
 > Andrea debe hacer el paso 6 en su dispositivo con la **misma URL** (mándasela por WhatsApp).
 
+### Interfaces (Equilibrio Total / Gerontología)
+
+Las dos interfaces usan **la misma URL**, pero cada una escribe en su propia pestaña del Sheet:
+`registros` (Equilibrio Total) y `registros_gerontologia` (Gerontología, se crea sola).
+Al entrar a Gerontología en un dispositivo que ya está conectado, toma la URL automáticamente.
+
+Si el Apps Script se implementó antes de este cambio, hay que actualizarlo **una vez**:
+pega el `apps_script.gs` nuevo, guarda y ve a **Implementar → Gestionar implementaciones →
+✏️ → Versión: Nueva versión → Implementar** (la URL no cambia). Mientras no se actualice,
+Gerontología muestra 🔴 **Actualiza Apps Script** y guarda sus registros en cola, sin
+mezclarlos con los de Equilibrio.
+
 ## Estado de la sincronización (pastilla del encabezado)
 
 - 🟢 **Sync HH:MM** — todo sincronizado
